@@ -27,19 +27,15 @@ $tasks = [
     [
         'classname' => 'local_importpossehluser\task\possehluser_cron',
         'blocking' => 0,
-        'minute' => '*/2',
-        'hour' => '*',
+        'hour' => '1',
         'day' => '*',
-        'month' => '*',
-        'dayofweek' => '*',
+        'disabled'=> 1, 
     ],
     [
         'classname' => 'local_importpossehluser\task\possehl_import_start_cron',
         'blocking' => 0,
-        'minute' => '*/2',
-        'hour' => '*',
-        'day' => '*',
+        'hour' => '12',
         'month' => '*',
-        'dayofweek' => '*',
+        'disabled'=> 1, 
     ],
 ];
