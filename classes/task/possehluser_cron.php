@@ -111,7 +111,7 @@ function start_process()
     }
 
     //prepare external data for Moodle-import
-    $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen";
+    $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,cohort1";
     $csv_data = $table_header . "\n";
 
     $sql = "SELECT  `givenname`, `sn`, `mail`, `sid` FROM `" . $tablename . "`";
@@ -124,7 +124,7 @@ function start_process()
             //Emaildomains als Profilfeld unternehmen erstellen
             $maildata = " ";
             $maildata = substr(strrchr($row["mail"], "@"), 1);
-            $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "\n";
+            $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata . "\n";
             //$csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . "noreply@noreply.noreply" . $i . "," . $row["sid"] . "," . $maildata . "\n";
         }
         // }

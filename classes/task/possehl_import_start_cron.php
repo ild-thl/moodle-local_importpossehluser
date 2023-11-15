@@ -126,7 +126,7 @@ function start_import_process()
     }
 
     //prepare external data for Moodle-import
-    $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen";
+    $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,cohort1";
     $csv_data = $table_header . "\n";
     //$possehl_tablename = $possehl_tablename; 
     //$possehl_tablename = "tixxt_user";
@@ -144,7 +144,7 @@ function start_import_process()
                 //Emaildomains als Profilfeld unternehmen erstellen
                 $maildata = " ";
                 $maildata = substr(strrchr($row["mail"], "@"), 1);
-                $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "\n";
+                $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata . "\n";
             }
         }
         $dateiPfad = __DIR__ . '/count.txt';
