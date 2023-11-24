@@ -96,7 +96,7 @@ if ($result) {
         $i++;
         $maildata = " ";
         $maildata = substr(strrchr($row["mail"], "@"), 1);
-        $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata . "\n";
+        $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata ."\n";
         //$csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . "possehlnoreply@noreply.noreply" . $i . "," . $row["sid"] . "," . $maildata . "\n";
     }
 } else {

@@ -23,6 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+ $string['disable_possehluser_cron'] = 'Disable Possehl user if marked in DB';
  $string['possehluser_cron'] = 'Possehl user syncronisation';
  $string['possehl_import_start_cron'] = 'Possehl initial user syncronisation';
 $string['allowdeletes'] = 'Allow deletes';

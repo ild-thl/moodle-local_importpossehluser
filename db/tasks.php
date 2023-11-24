@@ -38,4 +38,11 @@ $tasks = [
         'month' => '*',
         'disabled'=> 1, 
     ],
+    [
+        'classname' => 'local_importpossehluser\task\disable_possehluser_cron',
+        'blocking' => 0,
+        'hour' => '1',
+        'day' => '*',
+        'disabled'=> 1, 
+    ],
 ];
