@@ -68,8 +68,8 @@ function start_deactivate_process()
         $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
         $tablename = $tableobj->value;
     } else {
-        echo("No connection to database. ");
-        die(); 
+        echo ("No connection to database. ");
+        die();
     }
 
 
@@ -81,21 +81,31 @@ function start_deactivate_process()
         //die("Connection failed: " . $conn->connect_error);
     }
 
-    $sql = "SELECT mail FROM `" . $tablename . "` WHERE disabled=1";
+    //$sql = "SELECT mail FROM `" . $tablename . "` WHERE disabled=1";
+    $sql = "SELECT mail, disabled FROM `" . $tablename . "`";
+
     $result = $conn->query($sql);
 
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            try {
-                $DB->set_field('user', 'suspended', 1, array('email' => $row["mail"]));
-                echo "Benutzerstatus erfolgreich aktualisiert.";
-            } catch (dml_exception $e) {
-                echo "Fehler bei der Aktualisierung des Benutzerstatus: " . $e->getMessage();
+            if ($row['disabled'] == 1) {
+                try {
+                    $DB->set_field('user', 'suspended', 1, array('email' => $row["mail"]));
+                    echo "Benutzerstatus erfolgreich aktualisiert.";
+                } catch (dml_exception $e) {
+                    echo "Fehler bei der Aktualisierung des Benutzerstatus: " . $e->getMessage();
+                }
+            } else {
+                try {
+                    $DB->set_field('user', 'suspended', 0, array('email' => $row["mail"]));
+                    echo "Benutzerstatus erfolgreich aktualisiert.";
+                } catch (dml_exception $e) {
+                    echo "Fehler bei der Aktualisierung des Benutzerstatus: " . $e->getMessage();
+                }
             }
         }
         // }
     } else {
         echo "0 results";
     }
-
 }

@@ -81,6 +81,7 @@ class possehl_import_start_cron extends \core\task\scheduled_task
 
 function start_import_process()
 {
+    /*
     //$dateiPfad = __DIR__ . '/local/importpossehluser/classes/task/count.txt';
     $dateiPfad = __DIR__ . '/count.txt';
 
@@ -93,7 +94,7 @@ function start_import_process()
     }
 
     echo ("Import gestartet bei Nr. " . $count);
-
+*/
 
     global $DB;
 
@@ -111,6 +112,28 @@ function start_import_process()
         $dbname = $dbbj->value;
         $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
         $tablename = $tableobj->value;
+
+        $countstring = $DB->get_record('config', ['name' => 'local_importpossehl_importstart']);
+
+        if ($countstring) {
+            // Wandle den Wert in einen Integer um
+            $count = intval($countstring->value);
+
+            // Jetzt kannst du $intValue verwenden, das ein Integer ist
+        } else {
+            $count = 0;
+            // Handle den Fall, dass kein Eintrag gefunden wurde
+        }
+        $amountstring = $DB->get_record('config', ['name' => 'local_importpossehl_importamount']);
+        if ($amountstring) {
+            // Wandle den Wert in einen Integer um
+            $amount = intval($amountstring->value);
+
+            // Jetzt kannst du $intValue verwenden, das ein Integer ist
+        } else {
+            $amount = 0;
+            // Handle den Fall, dass kein Eintrag gefunden wurde
+        }
     } else {
         echo ("No connection to database. ");
         die();
@@ -135,7 +158,7 @@ function start_import_process()
     $i = 0;
     if ($result) {
 
-        for ($l = $count; $l < $count + 100; $l++) {
+        for ($l = $count; $l < $count + $amount; $l++) {
             if ($result->data_seek($l)) {
                 $i++;
 
@@ -150,10 +173,22 @@ function start_import_process()
         $dateiPfad = __DIR__ . '/count.txt';
 
         // Der zu speichernde Wert
-        $wert = $count + 100;
+        //$wert = $count + 100;
+        //save new val in db
+        $new_count = $count + $amount;
+        // Zunächst holst du den aktuellen Eintrag
+        $record = $DB->get_record('config', ['name' => 'local_importpossehl_importstart']);
+
+        if ($record) {
+            // Setze den neuen Wert
+            $record->value = $count + $amount; // Ersetze 'neuerWert' mit dem Wert, den du setzen möchtest
+
+            // Aktualisiere den Eintrag in der Datenbank
+            $DB->update_record('config', $record);
+        }
 
         // Den Wert in die Datei schreiben
-        file_put_contents($dateiPfad, $wert);
+        //file_put_contents($dateiPfad, $wert);
     } else {
         echo "0 results";
     }
