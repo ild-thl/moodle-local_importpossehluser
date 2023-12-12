@@ -15,7 +15,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Task to disable users from external db if marked so.
+ * Task to delete users if marked as disabled in external DB and the
+ * deletion timespan indicated in settings.php is reached.
  *
  * @package    local_importpossehluser
  * @copyright   2023 ILD TH Lübeck <dev.ild@th-luebeck.de>
@@ -34,24 +35,24 @@ if (!defined('MOODLE_INTERNAL')) {
 
 
 
-class disable_possehluser_cron extends \core\task\scheduled_task
+class delete_possehluser_cron extends \core\task\scheduled_task
 {
 
     public function get_name()
     {
-        return get_string('disable_possehluser_cron', 'local_importpossehluser');
+        return get_string('delete_possehluser_cron', 'local_importpossehluser');
     }
 
 
 
     public function execute()
     {
-        start_deactivate_process();
+        start_delete_process();
     }
 }
 
 
-function start_deactivate_process()
+function start_delete_process()
 {
 
     global $DB;
@@ -67,6 +68,8 @@ function start_deactivate_process()
         $dbname = $dbbj->value;
         $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
         $tablename = $tableobj->value;
+        $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_deletetimespan']);
+        $timespan = $tableobj->value;
     } else {
         echo ("No connection to database. ");
         die();
@@ -80,28 +83,31 @@ function start_deactivate_process()
         echo "connection failed";
         //die("Connection failed: " . $conn->connect_error);
     }
-
-    //$sql = "SELECT mail FROM `" . $tablename . "` WHERE disabled=1";
-    $sql = "SELECT mail, penDisabled FROM `" . $tablename . "`";
+ /*TODO: Zeit ändern in Monate, Minuten ist nur zum Testen */
+    $sql = "SELECT * FROM `" . $tablename . "` WHERE penDisabled = 1 AND updatedAt <= CURRENT_TIMESTAMP - INTERVAL '" . $timespan . " minutes';";
 
     $result = $conn->query($sql);
-
+    var_dump($result);
     if ($result) {
+        echo ("results<br/>");
+        $i = 0;
         while ($row = $result->fetch_assoc()) {
-            if ($row['penDisabled'] == 1) {
+            $i++;
+            echo ("nbr. " . $i . " while <br/>");
+            $updatedTimestamp = strtotime($row['updatedAt']);
+            $fifteenMinutesAgo = strtotime('-' . $timespan . 'minutes');
+            $idnumber = $row['sid'];
+            $userid = $DB->get_field('user', 'id', array('idnumber' => $idnumber));
+
+            if ($updatedTimestamp < $fifteenMinutesAgo and $row['penDisabled'] == 1) {
                 try {
-                    $DB->set_field('user', 'suspended', 1, array('email' => $row["mail"]));
-                    echo "Benutzerstatus für User " . $row['mail'] . " erfolgreich disabled.";
+                    $DB->delete_records('user', array('id' => $userid));
+                    echo "Benutzer mit " . $row['mail'] . "erfolgreich gelöscht.<br/>";
                 } catch (dml_exception $e) {
-                    echo "Fehler bei der Aktualisierung des Benutzerstatus: " . $e->getMessage();
+                    echo "Fehler beim Löschen des Benutzers: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
                 }
             } else {
-                try {
-                    $DB->set_field('user', 'suspended', 0, array('email' => $row["mail"]));
-                    echo "Benutzerstatus erfolgreich aktualisiert, nicht disabled.";
-                } catch (dml_exception $e) {
-                    echo "Fehler bei der Aktualisierung des Benutzerstatus: " . $e->getMessage();
-                }
+                echo ("User mit " . $row['mail'] . "nicht betroffen");
             }
         }
         // }

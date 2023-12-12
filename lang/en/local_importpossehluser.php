@@ -22,7 +22,7 @@
  * @copyright   2023 ILD TH Lübeck <dev.ild@th-luebeck.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
+$string['delete_possehluser_cron'] = 'Delete user if marked as disabled in DB and timespan is reached';
  $string['disable_possehluser_cron'] = 'Dis/-enable Possehl user if marked in DB';
  $string['possehluser_cron'] = 'Possehl user syncronisation';
  $string['possehl_import_start_cron'] = 'Possehl initial user syncronisation';

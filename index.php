@@ -78,7 +78,7 @@ if ($conn->connect_error) {
 }
 
 //prepare external data for Moodle-import
-$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,cohort1";
+$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1";
 $csv_data = $table_header . "\n";
 
 $sql = "SELECT  `givenname`, `sn`, `mail`, `sid` FROM `" . $tablename . "`";
@@ -93,11 +93,47 @@ $nbr_runs = $row_count % 9;
 if ($result) {
 
     while ($row = $result->fetch_assoc()) {
-        $i++;
+        $email = $row["mail"];
         $maildata = " ";
         $maildata = substr(strrchr($row["mail"], "@"), 1);
-        $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata ."\n";
-        //$csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . "possehlnoreply@noreply.noreply" . $i . "," . $row["sid"] . "," . $maildata . "\n";
+        $userinputvalue = "automatisch";
+
+        //update user profil data if user already exists
+
+        global $DB;
+        $user = $DB->get_record('user', array('email' => $email));
+        if ($user) {
+            //update user profil data for userimport
+            $infoFieldNameImport = 'userimport';
+
+            //insert userimport data in user profile field "userimport" in db
+            $DB->execute(
+                "
+                INSERT INTO {user_info_data} (userid, fieldid, data)
+                SELECT ?, uif.id, ?
+                FROM {user_info_field} uif
+                WHERE uif.name LIKE ?
+                ON DUPLICATE KEY UPDATE data = ?",
+                array($user->id, $userinputvalue, $infoFieldNameImport, $newValue)
+            );
+
+            $infoFieldNameEnterprise = 'unternehmen';
+            $newData = $maildata;
+            //insert mail-domain data in user profile field "unternehmen" in db
+            $DB->execute(
+                "
+                INSERT INTO {user_info_data} (userid, fieldid, data)
+                SELECT ?, uif.id, ?
+                FROM {user_info_field} uif
+                WHERE uif.name LIKE ?
+                ON DUPLICATE KEY UPDATE data = ?",
+                array($user->id, $newData, $infoFieldNameEnterprise, $newData)
+            );
+            echo "User " . $email . ": Profilfelder wurde erfolgreich geupdated.<br/>";
+        }
+
+        //$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1";
+        $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $userinputvalue . "," . $maildata . "\n";
     }
 } else {
     echo "0 results";

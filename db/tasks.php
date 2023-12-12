@@ -45,4 +45,11 @@ $tasks = [
         'day' => '*',
         'disabled'=> 1, 
     ],
+    [
+        'classname' => 'local_importpossehluser\task\delete_possehluser_cron',
+        'blocking' => 0,
+        'hour' => '1',
+        'day' => '*',
+        'disabled'=> 1, 
+    ],
 ];
