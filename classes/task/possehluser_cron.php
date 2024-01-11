@@ -43,6 +43,7 @@ require_once($CFG->libdir . '/clilib.php');
 require_once($CFG->libdir . '/csvlib.class.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/uploaduser/locallib.php');
 require_once($CFG->dirroot . '/local/importpossehluser/user_form.php');
+require_once($CFG->dirroot . '/local/importpossehluser/locallib.php');
 
 
 

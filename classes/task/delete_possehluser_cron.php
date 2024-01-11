@@ -26,6 +26,7 @@
 namespace local_importpossehluser\task;
 
 require_once(__DIR__ . '/../../../../config.php');
+require_once($CFG->dirroot . '/local/importpossehluser/locallib.php');
 
 use stdClass;
 
