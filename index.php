@@ -28,6 +28,7 @@ require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->libdir . '/csvlib.class.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/uploaduser/locallib.php');
 require_once($CFG->dirroot . '/local/importpossehluser/user_form.php');
+require_once($CFG->dirroot . '/local/importpossehluser/locallib.php');
 
 $iid         = optional_param('iid', '', PARAM_INT);
 $previewrows = optional_param('previewrows', 10, PARAM_INT);
@@ -40,35 +41,27 @@ admin_externalpage_setup('tooluploaduser'); //Check, ob man berechtigt ist
 $returnurl = new moodle_url('/local/importpossehluser/index.php');
 $bulknurl  = new moodle_url('/admin/user/user_bulk.php');
 
-global $DB;
-$data = "";
+/**
+ * Retrieves data from the database.
+ *
+ * @return mixed The data retrieved from the database.
+ */
+$tablename = get_tablename();
 
-//Dummydata
-/*
-$servername = "sql11.freesqldatabase.com";
-$username =  "sql11654319";
-$password =  "c4hRbu1DC7";
-$dbname = "sql11654319";
-$tablename = "user";
-*/
-if ($DB->get_records('config')) {
-    //get Server-Connection-Params from DB -> saved in settings.php
-    $serverobj = $DB->get_record('config', ['name' => 'local_importpossehluser_servername']);
-    $servername = ($serverobj->value);
-    $userobj = $DB->get_record('config', ['name' => 'local_importpossehl_username']);
-    $username = $userobj->value;
-    $passobj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_pw']);
-    $password = $passobj->value;
-    $dbbj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_dbname']);
-    $dbname = $dbbj->value;
-    $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
-    $tablename = $tableobj->value;
-} else {
-    echo ("No connection to database. ");
-    die();
-}
+$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "`";
+
+$result = get_data_from_external_db($sql);
+
+/**
+ * Prepares the CSV data for processing.
+ *
+ * @param array $result The result data to be prepared.
+ * @return array The prepared CSV data.
+ */
+$csv_data = prepare_csv_data($result);
 
 
+<<<<<<< Updated upstream
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
 // Check connection
@@ -102,6 +95,8 @@ if ($result) {
 } else {
     echo "0 results";
 }
+=======
+>>>>>>> Stashed changes
 
 //back to normal csv-process, see admin/tool/uploaduser
 if (empty($iid)) {

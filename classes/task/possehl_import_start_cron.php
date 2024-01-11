@@ -43,6 +43,7 @@ require_once($CFG->libdir . '/clilib.php');
 require_once($CFG->libdir . '/csvlib.class.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/uploaduser/locallib.php');
 require_once($CFG->dirroot . '/local/importpossehluser/user_form.php');
+require_once($CFG->dirroot . '/local/importpossehluser/locallib.php');
 
 
 
@@ -81,6 +82,7 @@ class possehl_import_start_cron extends \core\task\scheduled_task
 
 function start_import_process()
 {
+<<<<<<< Updated upstream
     //$dateiPfad = __DIR__ . '/local/importpossehluser/classes/task/count.txt';
     $dateiPfad = __DIR__ . '/count.txt';
 
@@ -94,46 +96,71 @@ function start_import_process()
 
     echo ("Import gestartet bei Nr. " . $count);
 
+=======
+>>>>>>> Stashed changes
 
     global $DB;
+    $tablename = get_tablename(); 
+    $sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "`";
+    $result = get_data_from_external_db($sql);
 
-    if ($DB->get_records('config')) {
-        //get Server-Connection-Params from DB -> saved in settings.php
-        $serverobj = $DB->get_record('config', ['name' => 'local_importpossehluser_servername']);
-        $servername = ($serverobj->value);
 
-        $userobj = $DB->get_record('config', ['name' => 'local_importpossehl_username']);
-        $username = $userobj->value;
+    /**
+     * This code retrieves the value of the 'local_importpossehl_importstart' configuration setting from the database.
+     * The value is nessessary as the new starting point of a chunk of imported users.
+     * If the setting exists, it converts the value to an integer and assigns it to the variable $count.
+     * If the setting does not exist, it assigns the value 0 to $count.
+     * 
+     * @var int $count The integer value of the 'local_importpossehl_importstart' configuration setting.
+     */
+    $countstring = $DB->get_record('config', ['name' => 'local_importpossehl_importstart']);
 
+<<<<<<< Updated upstream
         $passobj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_pw']);
         $password = $passobj->value;
         $dbbj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_dbname']);
         $dbname = $dbbj->value;
         $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
         $tablename = $tableobj->value;
+=======
+    if ($countstring) {
+        // Wandle den Wert in einen Integer um
+        $count = intval($countstring->value);
+
+        // Jetzt kannst du $intValue verwenden, das ein Integer ist
+>>>>>>> Stashed changes
     } else {
-        echo ("No connection to database. ");
-        die();
+        $count = 0;
+        // Handle den Fall, dass kein Eintrag gefunden wurde
+    }
+    /**
+     * Retrieves the import amount from the 'config' table and converts it to an integer.
+     * This value is the chunk size of users being imported at once.
+     * If the import amount is found, it is stored in the variable $amount.
+     * If no import amount is found, the variable $amount is set to 0.
+     *
+     * @param object $DB The database object used to query the 'config' table.
+     * @return void
+     */
+    $amountstring = $DB->get_record('config', ['name' => 'local_importpossehl_importamount']);
+    if ($amountstring) {
+        // Convert the value to an integer
+        $amount = intval($amountstring->value);
+
+        // Now you can use $amount, which is an integer
+    } else {
+        $amount = 0;
+        // Handle the case when no entry is found
     }
 
-
-    // Create connection
-    $conn = new \mysqli($servername, $username, $password, $dbname);
-    // Check connection
-    if ($conn->connect_error) {
-        echo "connection failed";
-        //die("Connection failed: " . $conn->connect_error);
-    }
-
+    /*TODO: Umstrukturieren wg. Doppelung */
+    /*TODO:Aktualisierung table Header */
     //prepare external data for Moodle-import
-    $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,cohort1";
-    $csv_data = $table_header . "\n";
-    //$possehl_tablename = $possehl_tablename; 
-    //$possehl_tablename = "tixxt_user";
-    $sql = "SELECT  `givenname`, `sn`, `mail`, `sid` FROM `" . $tablename . "`";
-    $result = $conn->query($sql);
+
     $i = 0;
     if ($result) {
+        $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
+        $csv_data = $table_header . "\n";
 
         for ($l = $count; $l < $count + 100; $l++) {
             if ($result->data_seek($l)) {
@@ -142,12 +169,19 @@ function start_import_process()
                 /* Eine einzelne Zeile abrufen */
                 $row = $result->fetch_assoc();
                 //Emaildomains als Profilfeld unternehmen erstellen
-                $maildata = " ";
-                $maildata = substr(strrchr($row["mail"], "@"), 1);
-                $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata . "\n";
+                $username = $row["mail"];
+                $firstname = $row["givenname"];
+                $lastname = $row["sn"];
+                $email = $row["mail"];
+                $idnumber = $row["sid"];
+                //$profileFieldEnterprise = " ";
+                $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
+                $profileFieldUserimport = "automatisch";
+                $cohort1 = $profileFieldEnterprise;
+                $suspended = $row["penDisabled"];
+                $csv_data .= $username . "," . $firstname . "," . $lastname . "," . $email . "," . $idnumber . "," . $profileFieldEnterprise . "," . $profileFieldUserimport . "," . $cohort1 . "," . $suspended . "\n";
             }
         }
-        $dateiPfad = __DIR__ . '/count.txt';
 
         // Der zu speichernde Wert
         $wert = $count + 100;
@@ -159,78 +193,13 @@ function start_import_process()
     }
 
     echo ($csv_data);
-    initial_possehl_process($csv_data);
-}
 
-
-
-function initial_possehl_process($data): void
-{
-    $iid         = optional_param('iid', '', PARAM_INT);
-    $previewrows = optional_param('previewrows', 10, PARAM_INT);
-
-
-    $formdata1 = new stdClass;
-    $formdata1->encoding = "UTF-8";
-    $formdata1->delimiter_name = "comma";
-
-
-    // Read the CSV file.
-    $iid = \csv_import_reader::get_new_iid('uploaduser');
-    $cir = new \csv_import_reader($iid, 'uploaduser');
-
-    $content = $data;
-
-
-    $readcount = $cir->load_csv_content($content, $formdata1->encoding, $formdata1->delimiter_name);
-    //print_object($cir);
-    $csvloaderror = $cir->get_error();
-    //echo $content;
-    unset($content);
-
-    if (!is_null($csvloaderror)) {
-        print_error('csvloaderror', '', $csvloaderror);
-    }
-
-    $process = new \tool_uploaduser\process($cir);
-
-    $formdata = new stdClass;
-    $formdata->uutype = 0;
-    $formdata->uupasswordnew = 1;
-    $formdata->uuupdatetype = 0;
-    $formdata->uupasswordold = 0;
-    $formdata->uuallowrenames = 0;
-    $formdata->uuallowdeletes = 0;
-    $formdata->uuallowsuspends = 1;
-    $formdata->uunoemailduplicates = 1;
-    $formdata->uustandardusernames = 1;
-    $formdata->uubulk = 0;
-    //$formdata->username = "%l%f";
-    $formdata->auth = "manual";
-    $formdata->maildisplay = 2;
-    $formdata->emailstop = 0;
-    $formdata->mailformat = 1;
-    $formdata->maildigest = 0;
-    $formdata->autosubscribe = 1;
-    $formdata->city = "";
-    $formdata->country = "";
-    $formdata->timezone = 99;
-    $formdata->lang = "de";
-    $formdata->description = "";
-    $formdata->institution = "";
-    $formdata->department = "";
-    $formdata->phone1 = "";
-    $formdata->phone2 = "";
-    $formdata->address = "";
-    $formdata->profile_field_cluster = "bitte auswählen";
-    $formdata->profile_field_position = "bitte auswählen";
-    $formdata->profile_field_geschaeftsbereich = "bitte auswählen";
-    $formdata->iid = $iid;
-    $formdata->previewrows = 10;
-    $formdata->submitbutton = "Upload Possehl Users";
-    $formdata->descriptionformat = 1;
-
-    $process->set_form_data($formdata);
-
-    $process->process();
+    //back to normal csv-process, see admin/tool/uploaduser
+    /**
+     * Calls the possehl_process function to start the import process.
+     *
+     * @param array $csv_data The CSV data to be processed.
+     * @return void
+     */
+    possehl_process($csv_data);
 }
