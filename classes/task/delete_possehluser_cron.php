@@ -35,6 +35,10 @@ if (!defined('MOODLE_INTERNAL')) {
 
 
 
+/**
+ * Represents a scheduled task for deleting Possehl users.
+ * Extends the core\task\scheduled_task class.
+ */
 class delete_possehluser_cron extends \core\task\scheduled_task
 {
 
@@ -52,66 +56,43 @@ class delete_possehluser_cron extends \core\task\scheduled_task
 }
 
 
+/**
+ * Selects records from the specified table where penDisabled is 1 and updatedAt is older than the specified timespan.
+ *
+ * @param string $tablename The name of the table to select from.
+ * @param int $timespan The timespan in minutes from plugin settings.
+ * @return string The SQL query.
+ */
 function start_delete_process()
 {
 
-    global $DB;
-    if ($DB->get_records('config')) {
-        $serverobj = $DB->get_record('config', ['name' => 'local_importpossehluser_servername']);
-        $servername = ($serverobj->value);
-        $userobj = $DB->get_record('config', ['name' => 'local_importpossehl_username']);
-        $username = $userobj->value;
+    /**
+     * This script is responsible for deleting possehluser records from the database based on a specified timespan.
+     * It retrieves the necessary configuration values from the 'config' table in the database.
+     * If there is no connection to the database, it outputs an error message and terminates the script.
+     */
 
-        $passobj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_pw']);
-        $password = $passobj->value;
-        $dbbj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_dbname']);
-        $dbname = $dbbj->value;
-        $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
-        $tablename = $tableobj->value;
-        $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_deletetimespan']);
-        $timespan = $tableobj->value;
-    } else {
-        echo ("No connection to database. ");
-        die();
-    }
+    $tablename = get_tablename();
+    $timespan =  get_delete_timespan();
+
+    /**
+     * Selects records from the specified table where penDisabled is 1 and updatedAt is older than the specified timespan.
+     *
+     * @param string $tablename The name of the table to select from.
+     * @param int $timespan The timespan in minutes from plugin settings.
+     * @return string The SQL query.
+     */
+
+    $sql = "SELECT * FROM `" . $tablename . "` WHERE penDisabled = 1 AND updatedAt <= CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH;";
+    $result = get_data_from_external_db($sql);
+    //var_dump($result);
+
+    //step 1: delete disabled users from external db if they match the criteria
+    echo "Data from external db with time interval: \n ";
+    delete_disabled_users_from_external_db_data($result, $timespan);
 
 
-    // Create connection
-    $conn = new \mysqli($servername, $username, $password, $dbname);
-    // Check connection
-    if ($conn->connect_error) {
-        echo "connection failed";
-        //die("Connection failed: " . $conn->connect_error);
-    }
- /*TODO: Zeit ändern in Monate, Minuten ist nur zum Testen */
-    $sql = "SELECT * FROM `" . $tablename . "` WHERE penDisabled = 1 AND updatedAt <= CURRENT_TIMESTAMP - INTERVAL '" . $timespan . " minutes';";
-
-    $result = $conn->query($sql);
-    var_dump($result);
-    if ($result) {
-        echo ("results<br/>");
-        $i = 0;
-        while ($row = $result->fetch_assoc()) {
-            $i++;
-            echo ("nbr. " . $i . " while <br/>");
-            $updatedTimestamp = strtotime($row['updatedAt']);
-            $fifteenMinutesAgo = strtotime('-' . $timespan . 'minutes');
-            $idnumber = $row['sid'];
-            $userid = $DB->get_field('user', 'id', array('idnumber' => $idnumber));
-
-            if ($updatedTimestamp < $fifteenMinutesAgo and $row['penDisabled'] == 1) {
-                try {
-                    $DB->delete_records('user', array('id' => $userid));
-                    echo "Benutzer mit " . $row['mail'] . "erfolgreich gelöscht.<br/>";
-                } catch (dml_exception $e) {
-                    echo "Fehler beim Löschen des Benutzers: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
-                }
-            } else {
-                echo ("User mit " . $row['mail'] . "nicht betroffen");
-            }
-        }
-        // }
-    } else {
-        echo "0 results";
-    }
+    //step 2 (fallback): delete disabled users from moodle db if they match the criteria
+    echo "\n\n\n Data from moodle db: \n ";
+    delete_disabled_users_from_moodle_db_data($timespan);
 }

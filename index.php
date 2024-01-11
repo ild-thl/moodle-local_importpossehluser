@@ -28,6 +28,7 @@ require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->libdir . '/csvlib.class.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/uploaduser/locallib.php');
 require_once($CFG->dirroot . '/local/importpossehluser/user_form.php');
+require_once($CFG->dirroot . '/local/importpossehluser/locallib.php');
 
 $iid         = optional_param('iid', '', PARAM_INT);
 $previewrows = optional_param('previewrows', 10, PARAM_INT);
@@ -40,104 +41,26 @@ admin_externalpage_setup('tooluploaduser'); //Check, ob man berechtigt ist
 $returnurl = new moodle_url('/local/importpossehluser/index.php');
 $bulknurl  = new moodle_url('/admin/user/user_bulk.php');
 
-global $DB;
-$data = "";
+/**
+ * Retrieves data from the database.
+ *
+ * @return mixed The data retrieved from the database.
+ */
+$tablename = get_tablename();
 
-//Dummydata
-/*
-$servername = "sql11.freesqldatabase.com";
-$username =  "sql11654319";
-$password =  "c4hRbu1DC7";
-$dbname = "sql11654319";
-$tablename = "user";
-*/
-if ($DB->get_records('config')) {
-    //get Server-Connection-Params from DB -> saved in settings.php
-    $serverobj = $DB->get_record('config', ['name' => 'local_importpossehluser_servername']);
-    $servername = ($serverobj->value);
-    $userobj = $DB->get_record('config', ['name' => 'local_importpossehl_username']);
-    $username = $userobj->value;
-    $passobj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_pw']);
-    $password = $passobj->value;
-    $dbbj = $DB->get_record('config', ['name' => 'local_importpossehluserdb_dbname']);
-    $dbname = $dbbj->value;
-    $tableobj = $DB->get_record('config', ['name' => 'local_importpossehl_tablename']);
-    $tablename = $tableobj->value;
-} else {
-    echo ("No connection to database. ");
-    die();
-}
+$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "`";
+
+$result = get_data_from_external_db($sql);
+
+/**
+ * Prepares the CSV data for processing.
+ *
+ * @param array $result The result data to be prepared.
+ * @return array The prepared CSV data.
+ */
+$csv_data = prepare_csv_data($result);
 
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-// Check connection
-if ($conn->connect_error) {
-    echo "connection failed";
-    die("Connection failed: " . $conn->connect_error);
-}
-
-//prepare external data for Moodle-import
-$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1";
-$csv_data = $table_header . "\n";
-
-$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` FROM `" . $tablename . "`";
-$result = $conn->query($sql);
-$row_count = $result->num_rows;
-echo "<br/><br/><br/><br/>Anzahl der Zeilen: " . $row_count;
-$i = 0;
-
-$nbr_runs = $row_count % 9;
-
-
-if ($result) {
-
-    while ($row = $result->fetch_assoc()) {
-        $email = $row["mail"];
-        $maildata = " ";
-        $maildata = substr(strrchr($row["mail"], "@"), 1);
-        $userinputvalue = "automatisch";
-
-        //update user profil data if user already exists
-
-        global $DB;
-        $user = $DB->get_record('user', array('email' => $email));
-        if ($user) {
-            //update user profil data for userimport
-            $infoFieldNameImport = 'userimport';
-
-            //insert userimport data in user profile field "userimport" in db
-            $DB->execute(
-                "
-                INSERT INTO {user_info_data} (userid, fieldid, data)
-                SELECT ?, uif.id, ?
-                FROM {user_info_field} uif
-                WHERE uif.name LIKE ?
-                ON DUPLICATE KEY UPDATE data = ?",
-                array($user->id, $userinputvalue, $infoFieldNameImport, $newValue)
-            );
-
-            $infoFieldNameEnterprise = 'unternehmen';
-            $newData = $maildata;
-            //insert mail-domain data in user profile field "unternehmen" in db
-            $DB->execute(
-                "
-                INSERT INTO {user_info_data} (userid, fieldid, data)
-                SELECT ?, uif.id, ?
-                FROM {user_info_field} uif
-                WHERE uif.name LIKE ?
-                ON DUPLICATE KEY UPDATE data = ?",
-                array($user->id, $newData, $infoFieldNameEnterprise, $newData)
-            );
-            echo "User " . $email . ": Profilfelder wurde erfolgreich geupdated.<br/>";
-        }
-
-        //$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1";
-        $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $userinputvalue . "," . $maildata . "\n";
-    }
-} else {
-    echo "0 results";
-}
 
 //back to normal csv-process, see admin/tool/uploaduser
 if (empty($iid)) {
