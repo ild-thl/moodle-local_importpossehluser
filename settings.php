@@ -116,6 +116,65 @@ if ($hassiteconfig) {
 
 	));
 
+	// Add a setting field to the settings for this page
+	$settings->add(new admin_setting_configtext(
+
+		// This is the reference you will use to your configuration
+		'local_importpossehl_importstart',
+
+		// This is the friendly title for the config, which will be displayed
+		'Startwert Import',
+
+		// This is helper text for this config field
+		'Startwert, bei dem der Import in kleinen Schritten ausgeführt wird',
+
+		// This is the default value
+		'0',
+
+		// This is the type of Parameter this config is
+		PARAM_TEXT
+
+	));
+
+	// Add a setting field to the settings for this page
+	$settings->add(new admin_setting_configtext(
+
+		// This is the reference you will use to your configuration
+		'local_importpossehl_importamount',
+
+		// This is the friendly title for the config, which will be displayed
+		'Usermenge',
+
+		// This is helper text for this config field
+		'Menge an Usern, die gleichzeitig importiert werden sollen',
+
+		// This is the default value
+		'100',
+
+		// This is the type of Parameter this config is
+		PARAM_TEXT
+
+	));
+
+	$settings->add(new admin_setting_configtext(
+
+		// This is the reference you will use to your configuration
+		'local_importpossehl_deletetimespan',
+
+		// This is the friendly title for the config, which will be displayed
+		'Löschzeitraum',
+
+		// This is helper text for this config field
+		'Zeitraum, nachdem in Logopak-DB penDisabled gesetzte User gelöscht werden sollen (in Monaten)',
+
+		// This is the default value
+		'6',
+
+		// This is the type of Parameter this config is
+		PARAM_TEXT
+
+	));
+
 
 	// Add a setting field to the settings for this page
 	$settings->add(new admin_setting_configpasswordunmask(

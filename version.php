@@ -25,11 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-<<<<<<< Updated upstream
-$plugin->version   = 20220729467; // The current plugin version (Date: YYYYMMDDXX).
-=======
 $plugin->version   = 20220729473; // The current plugin version (Date: YYYYMMDDXX).
->>>>>>> Stashed changes
 $plugin->requires  = 2020041200; // Requires this Moodle version.
 $plugin->component = 'local_importpossehluser'; // Full name of the plugin (used for diagnostics)
 

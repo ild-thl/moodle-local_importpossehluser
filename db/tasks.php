@@ -38,8 +38,6 @@ $tasks = [
         'month' => '*',
         'disabled'=> 1, 
     ],
-<<<<<<< Updated upstream
-=======
     [
         'classname' => 'local_importpossehluser\task\delete_possehluser_cron',
         'blocking' => 0,
@@ -47,5 +45,4 @@ $tasks = [
         'day' => '*',
         'disabled'=> 1, 
     ],
->>>>>>> Stashed changes
 ];

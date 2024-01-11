@@ -61,42 +61,6 @@ $result = get_data_from_external_db($sql);
 $csv_data = prepare_csv_data($result);
 
 
-<<<<<<< Updated upstream
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-// Check connection
-if ($conn->connect_error) {
-    echo "connection failed";
-    die("Connection failed: " . $conn->connect_error);
-}
-
-//prepare external data for Moodle-import
-$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,cohort1";
-$csv_data = $table_header . "\n";
-
-$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` FROM `" . $tablename . "`";
-$result = $conn->query($sql);
-$row_count = $result->num_rows;
-echo "<br/><br/><br/><br/>Anzahl der Zeilen: " . $row_count;
-$i = 0;
-
-$nbr_runs = $row_count % 9;
-
-
-if ($result) {
-
-    while ($row = $result->fetch_assoc()) {
-        $i++;
-        $maildata = " ";
-        $maildata = substr(strrchr($row["mail"], "@"), 1);
-        $csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $maildata . "\n";
-        //$csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . "possehlnoreply@noreply.noreply" . $i . "," . $row["sid"] . "," . $maildata . "\n";
-    }
-} else {
-    echo "0 results";
-}
-=======
->>>>>>> Stashed changes
 
 //back to normal csv-process, see admin/tool/uploaduser
 if (empty($iid)) {
