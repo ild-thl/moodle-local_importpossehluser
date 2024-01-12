@@ -6,7 +6,7 @@ This plugin allows you to import users from an external database into Moodle.
 
 ## Installation
 
-1. Download the latest version of the plugin from the Moodle plugins directory.
+1. Download the latest version of the plugin from Github.
 2. Extract the plugin files to the `local/importpossehluser` directory in your Moodle installation.
 3. Log in to your Moodle site as an administrator.
 
@@ -23,13 +23,10 @@ This plugin allows you to import users from an external database into Moodle.
 ## Requirements
 
 - Moodle 3.0 or later
-- Possehl user data file in the specified format
+- Access to external database to call sql queries
 
-## Contributing
-
-Contributions are welcome! If you find any issues or have suggestions for improvements, please submit a pull request or open an issue on the [GitHub repository](https://github.com/your-repository).
 
 ## License
 
-This plugin is licensed under the [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0.en.html). See the [LICENSE](LICENSE) file for more details.
+This plugin is licensed under the [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0.en.html). 
 
