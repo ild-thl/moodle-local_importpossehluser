@@ -47,8 +47,10 @@ $bulknurl  = new moodle_url('/admin/user/user_bulk.php');
  * @return mixed The data retrieved from the database.
  */
 $tablename = get_tablename();
+$timespan =  get_delete_timespan();
 
-$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "`";
+//get all users from external db matching the criteria (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)
+$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "` WHERE penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH);";
 
 $result = get_data_from_external_db($sql);
 

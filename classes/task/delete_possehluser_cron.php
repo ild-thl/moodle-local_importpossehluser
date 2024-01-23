@@ -84,16 +84,14 @@ function start_delete_process()
      * @return string The SQL query.
      */
 
-    $sql = "SELECT * FROM `" . $tablename . "` WHERE penDisabled = 1 AND updatedAt <= CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH;";
+    $sql = "SELECT `mail`, `updatedAt` FROM `" . $tablename . "` WHERE penDisabled = 1 AND updatedAt <= CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH;";
+
     $result = get_data_from_external_db($sql);
-    //var_dump($result);
 
     //step 1: delete disabled users from external db if they match the criteria
-    echo "Data from external db with time interval: \n ";
-    delete_disabled_users_from_external_db_data($result, $timespan);
+    delete_disabled_users_from_external_db_data($result);
 
 
     //step 2 (fallback): delete disabled users from moodle db if they match the criteria
-    echo "\n\n\n Data from moodle db: \n ";
     delete_disabled_users_from_moodle_db_data($timespan);
 }

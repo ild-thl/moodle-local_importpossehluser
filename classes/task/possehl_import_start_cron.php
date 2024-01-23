@@ -84,8 +84,11 @@ function start_import_process()
 {
 
     global $DB;
-    $tablename = get_tablename(); 
-    $sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "`";
+    $tablename = get_tablename();
+    $timespan =  get_delete_timespan();
+
+    //get users from external db matching the criteria (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)
+    $sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "` WHERE penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH);";
     $result = get_data_from_external_db($sql);
 
 
@@ -133,13 +136,17 @@ function start_import_process()
     //prepare external data for Moodle-import
 
     $i = 0;
+    $all_emails = array();
     if ($result) {
         $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
 
+
+
         for ($l = $count; $l < $count + $amount; $l++) {
             if ($result->data_seek($l)) {
                 $i++;
+
 
                 /* Eine einzelne Zeile abrufen */
                 $row = $result->fetch_assoc();
@@ -148,6 +155,10 @@ function start_import_process()
                 $firstname = $row["givenname"];
                 $lastname = $row["sn"];
                 $email = $row["mail"];
+
+                //append email to array
+                array_push($all_emails, $email);
+
                 $idnumber = $row["sid"];
                 //$profileFieldEnterprise = " ";
                 $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
@@ -189,4 +200,11 @@ function start_import_process()
      * @return void
      */
     possehl_process($csv_data);
+
+    //set lastlogin in user table in db to current time 
+    for ($i = 0; $i < count($all_emails); $i++) {
+        $user = $DB->get_record('user', array('email' => $all_emails[$i]));
+        $user->lastlogin = time();
+        $DB->update_record('user', $user);
+    }
 }

@@ -237,7 +237,7 @@ function possehl_process($data): void
  * @param int $timespan The specified timespan in month.
  * @return void
  */
-function delete_disabled_users_from_external_db_data($result, $timespan)
+function delete_disabled_users_from_external_db_data($result)
 {
     /**
      * This script is responsible for deleting users from the Moodle database
@@ -245,29 +245,35 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
      * the database and iterates over each user. If a user's 'updatedAt' timestamp
      * is older than a specified timespan and their 'penDisabled' flag is set to 1,
      * the user is deleted from the database. Otherwise, a message indicating that
-     * the user is not affected is displayed. The script also handles any exceptions
+     * the user does not exist in Moodle database is displayed. The script also handles any exceptions
      * that occur during the deletion process and displays appropriate error messages.
      */
-    echo "delete disabled users from external db data \n\n\n ";
-
+    echo "\n\n\n***** Delete user from Moodle-DB using external db-criteria:  *****\n\n\n ";
+    echo "timespan for deletion in month = " . get_delete_timespan() . "\n\n";
     global $DB;
     if ($result) {
-        echo ("results<br/>");
-        $i = 0;
-        while ($row = $result->fetch_assoc()) {
-            $i++;
-            //echo ("nbr. " . $i . " while <br/>");
-            $username = $row['mail'];
-            //$email = $row['mail'];
-            //$userid = $DB->get_field('user', 'id', array('username' => $email));
+        $count = $result->num_rows;
+        for ($l = 0; $l < $count; $l++) {
+            if ($result->data_seek($l)) {
+                $row = $result->fetch_assoc();
+                $username = $row['mail'];
+                $diff = strtotime(date("Y-m-d H:i:s")) - strtotime($row['updatedAt']);
+                //calculate the difference in weeks
+                $weeks = floor($diff / (60 * 60 * 24 * 7));
+                echo "From external DB: User " . $username . " disabled and last updated " . $weeks . " weeks ago\n";
 
-            try {
-                //$DB->delete_records('user', array('id' => $userid));
-                $DB->delete_records('user', array('username' => $username));
+                try {
+                    $userExists = $DB->get_record('user', array('username' => $username));
 
-                echo "User " . $username . " deleted sucessfully.\n";
-            } catch (dml_exception $e) {
-                echo "Fehler beim Löschen des Benutzers: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
+                    if ($userExists) {
+                        $DB->delete_records('user', array('username' => $username));
+                        echo "User " . $username . " deleted sucessfully.\n";
+                    } else {
+                        echo "User " . $username . " does not exist in Moodle-database.\n";
+                    }
+                } catch (dml_exception $e) {
+                    echo "Fehler beim Löschen des Benutzers: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
+                }
             }
         }
         // }
@@ -280,29 +286,30 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
 /**
  * Deletes disabled users from the Moodle database based on a given timespan.
  * Fallback solution if users get deleted on external db.
- * Users will be deleted after timespan if they are disabled and have not logged in for timespan in month.
- * @param int $timespan The timespan in minutes.
+ * Users will be deleted after timespan if they are disabled and have not logged in for timespan in month
+ * using Moodle database data.
+ * @param int $timespan The timespan in month.
  * @return void
  */
 function delete_disabled_users_from_moodle_db_data($timespan)
 {
-    echo "delete disabled users from moodle db data \n\n\n ";
+    echo "\n\n\n***** Delete user from Moodle-DB using internal db-criteria: *****\n\n\n ";
 
     global $DB;
 
-    //sql call to get all moodle users from moodle table mdl_user with the suspended flag set to 1 and lastlogin older than timespan minutes
-    $sql = "SELECT username FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
+    //sql call to get all moodle users from moodle table mdl_user with the suspended flag set to 1 and lastlogin older than timespan in month
+    $sql = "SELECT username, lastlogin FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
     try {
-        // Führen Sie die Abfrage aus
         $records = $DB->get_records_sql($sql);
-        $recordCount = count($records);
-        echo "Number of records: " . $recordCount . "\n";
-        //var_dump($records);
-
         foreach ($records as $record) {
             $username = $record->username;
-            echo $username . "\n";
+            $lastlogin = $record->lastlogin;
+            //calc difference in weeks from now to last login
+            $diff = strtotime(date("Y-m-d H:i:s")) - strtotime($lastlogin);
 
+            //calculate the difference in weeks
+            $weeks = floor($diff / (60 * 60 * 24 * 7));
+            echo "From Moodle DB: User " . $username . " disabled and last login " . $weeks . " weeks ago\n";
             $DB->delete_records('user', array('username' => $username));
             echo "User " . $username . " deleted sucessfully.\n";
         }
