@@ -113,43 +113,99 @@ function get_delete_timespan()
 
 
 /**
- * Prepares CSV data from a result set.
+ * Update existing users in moodle db with external db data: 
+ * - check if external user id exists in moodle db
+ * - if yes, update user
+ * - if no, create new user
+ * 
+ * - check if external email address exists in moodle db
+ * - if yes, update user
+ * - if no, create new user
+ * 
+ * - if user does not exist, prepare data for new user and add to csv data
+ * - export csv data (for moodle csv-import-process)
  *
- * @param mysqli_result $result The result set containing the data.
- * @return string The CSV data formatted as a string.
+ * @param mysqli_result $result The result set containing user data.
+ * @return string The CSV data formatted for updating existing users or creating new users.
  */
-function prepare_csv_data($result)
+
+
+function update_existing_user_prepare_csv_data_for_new_user($result)
 {
+    global $DB;
     if ($result) {
         $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
         while ($row = $result->fetch_assoc()) {
-            $username = $row["mail"];
-            $firstname = $row["givenname"];
-            $lastname = $row["sn"];
-            $email = $row["mail"];
-            $idnumber = $row["sid"];
-            //$profileFieldEnterprise = " ";
-            $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
-            $profileFieldUserimport = "automatisch";
-            $cohort1 = $profileFieldEnterprise;
-            $suspended = $row["penDisabled"];
+            try {
+                $userobj = $DB->get_record('user', ['idnumber' => $row["sid"]]);
+                $userid = $userobj->idnumber;
+            } catch (dml_exception $e) {
+                echo 'DB error: ' . $e->getMessage();
+            }
 
+            try {
+                $userobj = $DB->get_record('user', ['email' => $row["mail"]]);
+                $useremail = $userobj->email;
+            } catch (dml_exception $e) {
+                echo 'DB error: ' . $e->getMessage();
+            }
 
-
-            //$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
-            //$csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $userinputvalue . "," . $maildata . "\n";
-            $csv_data .= $username . "," . $firstname . "," . $lastname . "," . $email . "," . $idnumber . "," . $profileFieldEnterprise . "," . $profileFieldUserimport . "," . $cohort1 . "," . $suspended . "\n";
+            //check if user with certain sid already exists in Moodle DB, then update user
+            if (isset($userid) && !empty($userid) && $row["sid"] == $userid) {
+                //update user in moodle db
+                $userobj->username = $row["mail"];
+                $userobj->firstname = $row["givenname"];
+                $userobj->lastname = $row["sn"];
+                $userobj->email = $row["mail"];
+                //$userobj->idnumber = $row["sid"];
+                $userobj->profile_field_unternehmen = substr(strrchr($row["mail"], "@"), 1);
+                $userobj->profile_field_userimport = "automatisch";
+                $userobj->cohort1 = $userobj->profile_field_unternehmen;
+                $userobj->suspended = $row["penDisabled"];
+                $DB->update_record('user', $userobj);
+                echo "User " . $row["mail"] . " updated sucessfully.\n";
+            }
+            //check if user with certain email already exists in Moodle DB
+            elseif ($useremail == $row["mail"]) {
+                //$userobj->username = $row["mail"];
+                $userobj->firstname = $row["givenname"];
+                $userobj->lastname = $row["sn"];
+                $userobj->email = $row["mail"];
+                $userobj->idnumber = $row["sid"];
+                $userobj->profile_field_unternehmen = substr(strrchr($row["mail"], "@"), 1);
+                $userobj->profile_field_userimport = "automatisch";
+                $userobj->cohort1 = $userobj->profile_field_unternehmen;
+                $userobj->suspended = $row["penDisabled"];
+                $DB->update_record('user', $userobj);
+                echo "User " . $row["mail"] . " updated sucessfully.\n";
+            } else {
+                echo "User " . $row["mail"] . " does not exist in Moodle-database, will be created.\n";
+                $username = $row["mail"];
+                $firstname = $row["givenname"];
+                $lastname = $row["sn"];
+                $email = $row["mail"];
+                $idnumber = $row["sid"];
+                //$profileFieldEnterprise = " ";
+                $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
+                $profileFieldUserimport = "automatisch";
+                $cohort1 = $profileFieldEnterprise;
+                $suspended = $row["penDisabled"];
+                //$table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
+                //$csv_data .= $row["mail"] . "," . $row["givenname"] . "," . $row["sn"] . "," . $row["mail"] . "," . $row["sid"] . "," . $maildata . "," . $userinputvalue . "," . $maildata . "\n";
+                $csv_data .= $username . "," . $firstname . "," . $lastname . "," . $email . "," . $idnumber . "," . $profileFieldEnterprise . "," . $profileFieldUserimport . "," . $cohort1 . "," . $suspended . "\n";
+            }
         }
     } else {
         $csv_data = "0 results";
     }
+
     return $csv_data;
 }
 
 
 /**
- * Process the data for importing Possehl users.
+ * Process the csv data for importing new users.
  *
  * @param mixed $data The data to be processed.
  * @return void

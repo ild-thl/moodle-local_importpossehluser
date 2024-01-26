@@ -60,7 +60,7 @@ $result = get_data_from_external_db($sql);
  * @param array $result The result data to be prepared.
  * @return array The prepared CSV data.
  */
-$csv_data = prepare_csv_data($result);
+$csv_data = update_existing_user_prepare_csv_data_for_new_user($result);
 
 
 
