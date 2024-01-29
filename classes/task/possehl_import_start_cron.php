@@ -138,7 +138,7 @@ function start_import_process()
     $i = 0;
     $all_emails = array();
     if ($result) {
-        $table_header = "username,firstname,lastname,email,idnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
+        $table_header = "username,firstname,lastname,email,profile_field_sidnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
 
 
@@ -159,13 +159,13 @@ function start_import_process()
                 //append email to array
                 array_push($all_emails, $email);
 
-                $idnumber = $row["sid"];
+                $profileFieldSidnumber = $row["sid"];
                 //$profileFieldEnterprise = " ";
                 $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
                 $profileFieldUserimport = "automatisch";
                 $cohort1 = $profileFieldEnterprise;
                 $suspended = $row["penDisabled"];
-                $csv_data .= $username . "," . $firstname . "," . $lastname . "," . $email . "," . $idnumber . "," . $profileFieldEnterprise . "," . $profileFieldUserimport . "," . $cohort1 . "," . $suspended . "\n";
+                $csv_data .= $username . "," . $firstname . "," . $lastname . "," . $email . "," . $profileFieldSidnumber . "," . $profileFieldEnterprise . "," . $profileFieldUserimport . "," . $cohort1 . "," . $suspended . "\n";
             }
         }
 

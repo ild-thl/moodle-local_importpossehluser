@@ -23,8 +23,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 $string['delete_possehluser_cron'] = 'Delete user if marked as disabled in DB and timespan is reached';
- $string['disable_possehluser_cron'] = 'Dis/-enable Possehl user if marked in DB';
- $string['possehluser_cron'] = 'Possehl user syncronisation';
+$string['profile_field_sidnumber'] = 'profile_field_sidnumber';
+$string['disable_possehluser_cron'] = 'Dis/-enable Possehl user if marked in DB';
+$string['possehluser_cron'] = 'Possehl user syncronisation';
  $string['possehl_import_start_cron'] = 'Possehl initial user syncronisation';
 $string['allowdeletes'] = 'Allow deletes';
 $string['allowrenames'] = 'Allow renames';
