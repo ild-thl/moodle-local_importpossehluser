@@ -57,7 +57,7 @@ if (!defined('MOODLE_INTERNAL')) {
  *
  * @package    local_importpossehluser
  * @author     Nicholas Hoobin <nicholashoobin@catalyst-au.net>
- * @copyright  2017 Catalyst IT
+ * @copyright   2023 ILD TH Lübeck <dev.ild@th-luebeck.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

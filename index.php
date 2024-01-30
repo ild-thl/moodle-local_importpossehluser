@@ -36,7 +36,7 @@ $previewrows = optional_param('previewrows', 10, PARAM_INT);
 core_php_time_limit::raise(60 * 60); // 1 hour should be enough.
 raise_memory_limit(MEMORY_HUGE);
 
-admin_externalpage_setup('tooluploaduser'); //Check, ob man berechtigt ist
+admin_externalpage_setup('tooluploaduser'); //Check permissions
 
 $returnurl = new moodle_url('/local/importpossehluser/index.php');
 $bulknurl  = new moodle_url('/admin/user/user_bulk.php');

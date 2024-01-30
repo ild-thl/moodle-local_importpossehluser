@@ -33,14 +33,6 @@ function get_data_from_external_db($sql)
 {
     global $DB;
 
-    //Dummydata
-    /*
-Host: sql11.freesqldatabase.com
-Database name: sql11675637
-Database user: sql11675637
-Database password: uBBShqKSc8
-Tablename: user
-*/
     if ($DB->get_records('config')) {
         //get Server-Connection-Params from DB -> saved in settings.php
         $serverobj = $DB->get_record('config', ['name' => 'local_importpossehluser_servername']);
@@ -66,7 +58,6 @@ Tablename: user
         echo "connection failed";
         die("Connection failed: " . $conn->connect_error);
     }
-    //$sql = "SELECT  `givenname`, `sn`, `mail`, `sid` , `penDisabled`, `updatedAt` FROM `" . $tablename . "`";
 
     $result = $conn->query($sql);
     return $result;
@@ -197,7 +188,7 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                 $userobj->suspended = $row["penDisabled"];
                 $DB->update_record('user', $userobj);
                 echo "User " . $row["mail"] . " updated sucessfully via email.\n";
-            } 
+            }
             //if no user data in moodle db, create new user
             else {
                 echo "User " . $row["mail"] . " does not exist in Moodle-database, will be created.\n";

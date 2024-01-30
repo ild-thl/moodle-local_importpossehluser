@@ -103,13 +103,10 @@ function start_import_process()
     $countstring = $DB->get_record('config', ['name' => 'local_importpossehl_importstart']);
 
     if ($countstring) {
-        // Wandle den Wert in einen Integer um
+        //change value to integer
         $count = intval($countstring->value);
-
-        // Jetzt kannst du $intValue verwenden, das ein Integer ist
     } else {
         $count = 0;
-        // Handle den Fall, dass kein Eintrag gefunden wurde
     }
     /**
      * Retrieves the import amount from the 'config' table and converts it to an integer.
@@ -124,16 +121,9 @@ function start_import_process()
     if ($amountstring) {
         // Convert the value to an integer
         $amount = intval($amountstring->value);
-
-        // Now you can use $amount, which is an integer
     } else {
         $amount = 0;
-        // Handle the case when no entry is found
     }
-
-    /*TODO: Umstrukturieren wg. Doppelung */
-    /*TODO:Aktualisierung table Header */
-    //prepare external data for Moodle-import
 
     $i = 0;
     $all_emails = array();
@@ -146,11 +136,7 @@ function start_import_process()
         for ($l = $count; $l < $count + $amount; $l++) {
             if ($result->data_seek($l)) {
                 $i++;
-
-
-                /* Eine einzelne Zeile abrufen */
                 $row = $result->fetch_assoc();
-                //Emaildomains als Profilfeld unternehmen erstellen
                 $username = $row["mail"];
                 $firstname = $row["givenname"];
                 $lastname = $row["sn"];
@@ -160,32 +146,28 @@ function start_import_process()
                 array_push($all_emails, $email);
 
                 $profileFieldSidnumber = $row["sid"];
-                //$profileFieldEnterprise = " ";
+                //use email domain as enterprise
                 $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
+                //use "automatisch" as userimport value to distinguish between manually and automatically imported users
                 $profileFieldUserimport = "automatisch";
+                //use email domain as cohort
                 $cohort1 = $profileFieldEnterprise;
                 $suspended = $row["penDisabled"];
                 $csv_data .= $username . "," . $firstname . "," . $lastname . "," . $email . "," . $profileFieldSidnumber . "," . $profileFieldEnterprise . "," . $profileFieldUserimport . "," . $cohort1 . "," . $suspended . "\n";
             }
         }
 
-        // Der zu speichernde Wert
-        //$wert = $count + 100;
-        //save new val in db
-        $new_count = $count + $amount;
-        // Zunächst holst du den aktuellen Eintrag
+        //get the current value of the 'local_importpossehl_importstart' configuration setting from the database
+        //as starting point for the next chunk of imported users
         $record = $DB->get_record('config', ['name' => 'local_importpossehl_importstart']);
 
         if ($record) {
-            // Setze den neuen Wert
+            // set new value for 'local_importpossehl_importstart' configuration setting
             $record->value = $count + $amount; // Ersetze 'neuerWert' mit dem Wert, den du setzen möchtest
 
-            // Aktualisiere den Eintrag in der Datenbank
+            // update the 'local_importpossehl_importstart' configuration setting in the database
             $DB->update_record('config', $record);
         }
-
-        // Den Wert in die Datei schreiben
-        //file_put_contents($dateiPfad, $wert);
     } else {
         echo "0 results";
     }
@@ -201,7 +183,7 @@ function start_import_process()
      */
     possehl_process($csv_data);
 
-    //set lastlogin in user table in db to current time 
+    //set lastlogin in user table in db to current time for all imported user in this chunk 
     for ($i = 0; $i < count($all_emails); $i++) {
         $user = $DB->get_record('user', array('email' => $all_emails[$i]));
         $user->lastlogin = time();
