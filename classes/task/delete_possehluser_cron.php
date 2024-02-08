@@ -73,25 +73,15 @@ function start_delete_process()
      * If there is no connection to the database, it outputs an error message and terminates the script.
      */
 
-    $tablename = get_tablename();
-    $timespan =  get_delete_timespan();
 
-    /**
-     * Selects records from the specified table where penDisabled is 1 and updatedAt is older than the specified timespan.
-     *
-     * @param string $tablename The name of the table to select from.
-     * @param int $timespan The timespan in minutes from plugin settings.
-     * @return string The SQL query.
-     */
+    //get data from external db
+    $result = get_data_from_external_db();
 
-    $sql = "SELECT `mail`, `updatedAt` FROM `" . $tablename . "` WHERE penDisabled = 1 AND updatedAt <= CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH;";
-
-    $result = get_data_from_external_db($sql);
-
-    //step 1: delete disabled users from external db if they match the criteria
+    //step 1: delete moodle user if matches certain criteria from external db 
     delete_disabled_users_from_external_db_data($result);
 
 
-    //step 2 (fallback): delete disabled users from moodle db if they match the criteria
+    //step 2 (fallback): delete moodle users if they match the moodle-intern criteria
+    $timespan =  get_delete_timespan();
     delete_disabled_users_from_moodle_db_data($timespan);
 }

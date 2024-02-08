@@ -25,11 +25,11 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Retrieves data from the database.
+ * Retrieves data from the database matching certain criteria (see sql-statement).
  *
  * @return mysqli_result|bool The result of the database query or false if there is no connection.
  */
-function get_data_from_external_db($sql)
+function get_data_from_external_db()
 {
     global $DB;
 
@@ -58,6 +58,17 @@ function get_data_from_external_db($sql)
         echo "connection failed";
         die("Connection failed: " . $conn->connect_error);
     }
+
+    //get all users from external db matching the criteria 
+    //(penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)   
+    //must have sn and givenname entry 
+    $tablename = get_tablename();
+    $timespan =  get_delete_timespan();
+    $sql = "SELECT `givenname`, `sn`, `mail`, `sid`, `penDisabled`, `updatedAt` 
+            FROM `" . $tablename . "` 
+            WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)) 
+            AND `sn` <> '' 
+            AND `givenname` <> ''";
 
     $result = $conn->query($sql);
     return $result;
