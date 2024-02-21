@@ -69,25 +69,10 @@ function get_data_from_external_db()
             WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)) 
             AND `givenname` <> ''
             AND `sn` <> '' 
-            AND `mail` <> ''
-            ";
+            AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';";
 
     $result = $conn->query($sql);
-
     $conn->close();
-    echo "var dump: <br/>"; 
-    var_dump($result);
-
-    //for every entry in result, echo all data
-    echo "<br><br><br>result: <br/>"; 
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            echo "givenname: " . $row["givenname"] . " - sn: " . $row["sn"] . " - mail: " . $row["mail"] . " - sid: " . $row["sid"] . " - penDisabled: " . $row["penDisabled"] . " - updatedAt: " . $row["updatedAt"] . "<br>";
-        }
-    } else {
-        echo "0 results";
-    }
-
     return $result;
 }
 
@@ -189,6 +174,7 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
 
             //if user with certain sid already exists in Moodle DB, then update user
             if (isset($userid) && !empty($userid) && $row["sid"] == $userid) {
+                echo "User mit sid " . $row["mail"] . " already exists in Moodle-database, will be updated.\n";
                 //update user in moodle db
                 $userobj->username = $row["mail"];
                 $userobj->firstname = $row["givenname"];
@@ -205,6 +191,8 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
 
             //if user with certain email already exists in Moodle DB
             elseif ($useremail == $row["mail"]) {
+                echo "User mit email " . $row["mail"] . " already exists in Moodle-database, will be updated.\n";
+
                 //$userobj->username = $row["mail"];
                 $userobj->firstname = $row["givenname"];
                 $userobj->lastname = $row["sn"];

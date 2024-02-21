@@ -24,11 +24,11 @@
  */
 
 
- //Form wird angepasst für Cronjob-
+//Form wird angepasst für Cronjob-
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once $CFG->libdir.'/formslib.php';
+require_once $CFG->libdir . '/formslib.php';
 require_once($CFG->dirroot . '/user/editlib.php');
 
 /**
@@ -40,8 +40,10 @@ require_once($CFG->dirroot . '/user/editlib.php');
 
 
 //Form with 
-class admin_uploadpossehluser_form1 extends moodleform {
-    function definition () {
+class admin_uploadpossehluser_form1 extends moodleform
+{
+    function definition()
+    {
         $mform = $this->_form;
 
         $mform->addElement('header', 'settingsheader', get_string('upload'));
@@ -49,7 +51,18 @@ class admin_uploadpossehluser_form1 extends moodleform {
         $mform->addElement('select', 'encoding', get_string('encoding', 'local_importpossehluser'), $choices);
         $mform->setDefault('encoding', 'UTF-8');
 
-        $choices = array('10'=>10, '20'=>20, '100'=>100, '1000'=>1000, '100000'=>100000);
+        //new added 2024-02-21
+        $choices = csv_import_reader::get_delimiter_list();
+        $mform->addElement('select', 'delimiter_name', get_string('csvdelimiter', 'local_importpossehluser'), $choices);
+        if (array_key_exists('cfg', $choices)) {
+            $mform->setDefault('delimiter_name', 'comma');
+        } else if (get_string('listsep', 'langconfig') == ';') {
+            $mform->setDefault('delimiter_name', 'semicolon');
+        } else {
+            $mform->setDefault('delimiter_name', 'cfg');
+        }
+
+        $choices = array('10' => 10, '20' => 20, '100' => 100, '1000' => 1000, '100000' => 100000);
         $mform->addElement('select', 'previewrows', get_string('rowpreviewnum', 'local_importpossehluser'), $choices);
         $mform->setType('previewrows', PARAM_INT);
 
@@ -61,8 +74,9 @@ class admin_uploadpossehluser_form1 extends moodleform {
      *
      * @return array
      */
-    public function get_form_for_cli() {
-        $elements = array_filter($this->_form->_elements, function($element) {
+    public function get_form_for_cli()
+    {
+        $elements = array_filter($this->_form->_elements, function ($element) {
             return !in_array($element->getName(), ['buttonar', 'userfile', 'previewrows']);
         });
         return [$elements, $this->_form->_defaultValues];
@@ -76,8 +90,10 @@ class admin_uploadpossehluser_form1 extends moodleform {
  * @copyright  2007 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class admin_uploadpossehluser_form2 extends moodleform {
-    function definition () {
+class admin_uploadpossehluser_form2 extends moodleform
+{
+    function definition()
+    {
         global $CFG, $USER;
 
         $mform   = $this->_form;
@@ -90,10 +106,12 @@ class admin_uploadpossehluser_form2 extends moodleform {
         // upload settings and file
         $mform->addElement('header', 'settingsheader', get_string('settings'));
 
-        $choices = array(UU_USER_ADDNEW     => get_string('uuoptype_addnew', 'local_importpossehluser'),
-                         UU_USER_ADDINC     => get_string('uuoptype_addinc', 'local_importpossehluser'),
-                         UU_USER_ADD_UPDATE => get_string('uuoptype_addupdate', 'local_importpossehluser'),
-                         UU_USER_UPDATE     => get_string('uuoptype_update', 'local_importpossehluser'));
+        $choices = array(
+            UU_USER_ADDNEW     => get_string('uuoptype_addnew', 'local_importpossehluser'),
+            UU_USER_ADDINC     => get_string('uuoptype_addinc', 'local_importpossehluser'),
+            UU_USER_ADD_UPDATE => get_string('uuoptype_addupdate', 'local_importpossehluser'),
+            UU_USER_UPDATE     => get_string('uuoptype_update', 'local_importpossehluser')
+        );
         $mform->addElement('select', 'uutype', get_string('uuoptype', 'local_importpossehluser'), $choices);
 
         $choices = array(0 => get_string('infilefield', 'auth'), 1 => get_string('createpasswordifneeded', 'auth'));
@@ -101,10 +119,12 @@ class admin_uploadpossehluser_form2 extends moodleform {
         $mform->setDefault('uupasswordnew', 1);
         $mform->hideIf('uupasswordnew', 'uutype', 'eq', UU_USER_UPDATE);
 
-        $choices = array(UU_UPDATE_NOCHANGES    => get_string('nochanges', 'local_importpossehluser'),
-                         UU_UPDATE_FILEOVERRIDE => get_string('uuupdatefromfile', 'local_importpossehluser'),
-                         UU_UPDATE_ALLOVERRIDE  => get_string('uuupdateall', 'local_importpossehluser'),
-                         UU_UPDATE_MISSING      => get_string('uuupdatemissing', 'local_importpossehluser'));
+        $choices = array(
+            UU_UPDATE_NOCHANGES    => get_string('nochanges', 'local_importpossehluser'),
+            UU_UPDATE_FILEOVERRIDE => get_string('uuupdatefromfile', 'local_importpossehluser'),
+            UU_UPDATE_ALLOVERRIDE  => get_string('uuupdateall', 'local_importpossehluser'),
+            UU_UPDATE_MISSING      => get_string('uuupdatemissing', 'local_importpossehluser')
+        );
         $mform->addElement('select', 'uuupdatetype', get_string('uuupdatetype', 'local_importpossehluser'), $choices);
         $mform->setDefault('uuupdatetype', UU_UPDATE_NOCHANGES);
         $mform->hideIf('uuupdatetype', 'uutype', 'eq', UU_USER_ADDNEW);
@@ -118,9 +138,11 @@ class admin_uploadpossehluser_form2 extends moodleform {
         $mform->hideIf('uupasswordold', 'uuupdatetype', 'eq', 0);
         $mform->hideIf('uupasswordold', 'uuupdatetype', 'eq', 3);
 
-        $choices = array(UU_PWRESET_WEAK => get_string('usersweakpassword', 'local_importpossehluser'),
-                         UU_PWRESET_NONE => get_string('none'),
-                         UU_PWRESET_ALL  => get_string('all'));
+        $choices = array(
+            UU_PWRESET_WEAK => get_string('usersweakpassword', 'local_importpossehluser'),
+            UU_PWRESET_NONE => get_string('none'),
+            UU_PWRESET_ALL  => get_string('all')
+        );
         if (empty($CFG->passwordpolicy)) {
             unset($choices[UU_PWRESET_WEAK]);
         }
@@ -158,10 +180,12 @@ class admin_uploadpossehluser_form2 extends moodleform {
         $mform->addElement('selectyesno', 'uustandardusernames', get_string('uustandardusernames', 'local_importpossehluser'));
         $mform->setDefault('uustandardusernames', 1);
 
-        $choices = array(UU_BULK_NONE    => get_string('no'),
-                         UU_BULK_NEW     => get_string('uubulknew', 'local_importpossehluser'),
-                         UU_BULK_UPDATED => get_string('uubulkupdated', 'local_importpossehluser'),
-                         UU_BULK_ALL     => get_string('uubulkall', 'local_importpossehluser'));
+        $choices = array(
+            UU_BULK_NONE    => get_string('no'),
+            UU_BULK_NEW     => get_string('uubulknew', 'local_importpossehluser'),
+            UU_BULK_UPDATED => get_string('uubulkupdated', 'local_importpossehluser'),
+            UU_BULK_ALL     => get_string('uubulkall', 'local_importpossehluser')
+        );
         $mform->addElement('select', 'uubulk', get_string('uubulk', 'local_importpossehluser'), $choices);
         $mform->setDefault('uubulk', 0);
 
@@ -217,13 +241,13 @@ class admin_uploadpossehluser_form2 extends moodleform {
 
         $mform->addElement('text', 'username', get_string('uuusernametemplate', 'local_importpossehluser'), 'size="20"');
         $mform->setType('username', PARAM_RAW); // No cleaning here. The process verifies it later.
-        
-        
+
+
         $mform->addRule('username', get_string('requiredtemplate', 'local_importpossehluser'), 'required', null, 'client');
         //$mform->hideIf('username', 'uutype', 'eq', UU_USER_ADD_UPDATE);
         //$mform->hideIf('username', 'uutype', 'eq', UU_USER_UPDATE);
         $mform->setForceLtr('username');
-        
+
         //neuer Default-Wert gesetzt -> TO DO ABstimmung
         $mform->setDefault('username', '%l%f');
 
@@ -235,7 +259,7 @@ class admin_uploadpossehluser_form2 extends moodleform {
 
         // only enabled and known to work plugins
         $choices = uu_supported_auths();
-        $mform->addElement('select', 'auth', get_string('chooseauthmethod','auth'), $choices);
+        $mform->addElement('select', 'auth', get_string('chooseauthmethod', 'auth'), $choices);
         $mform->setDefault('auth', 'manual'); // manual is a sensible backwards compatible default
         $mform->addHelpButton('auth', 'chooseauthmethod', 'auth');
         $mform->setAdvanced('auth');
@@ -273,7 +297,7 @@ class admin_uploadpossehluser_form2 extends moodleform {
         }
 
         $choices = get_string_manager()->get_list_of_countries();
-        $choices = array(''=>get_string('selectacountry').'...') + $choices;
+        $choices = array('' => get_string('selectacountry') . '...') + $choices;
         $mform->addElement('select', 'country', get_string('selectacountry'), $choices);
         if (empty($CFG->country)) {
             $mform->setDefault('country', $templateuser->country);
@@ -291,7 +315,7 @@ class admin_uploadpossehluser_form2 extends moodleform {
         $mform->setDefault('lang', $templateuser->lang);
         $mform->setAdvanced('lang');
 
-        $editoroptions = array('maxfiles'=>0, 'maxbytes'=>0, 'trusttext'=>false, 'forcehttps'=>false);
+        $editoroptions = array('maxfiles' => 0, 'maxbytes' => 0, 'trusttext' => false, 'forcehttps' => false);
         $mform->addElement('editor', 'description', get_string('userdescription'), null, $editoroptions);
         $mform->setType('description', PARAM_CLEANHTML);
         $mform->addHelpButton('description', 'userdescription');
@@ -341,7 +365,8 @@ class admin_uploadpossehluser_form2 extends moodleform {
     /**
      * Form tweaks that depend on current data.
      */
-    function definition_after_data() {
+    function definition_after_data()
+    {
         $mform   = $this->_form;
         $columns = $this->_customdata['columns'];
 
@@ -362,7 +387,8 @@ class admin_uploadpossehluser_form2 extends moodleform {
     /**
      * Server side validation.
      */
-    function validation($data, $files) {
+    function validation($data, $files)
+    {
         $errors = parent::validation($data, $files);
         $columns = $this->_customdata['columns'];
         $optype  = $data['uutype'];
@@ -381,7 +407,7 @@ class admin_uploadpossehluser_form2 extends moodleform {
                     if (empty($data['uupasswordnew'])) {
                         $errors['uupasswordnew'] = get_string('missingfield', 'error', 'password');
                     }
-                    if  (!empty($data['uupasswordold'])) {
+                    if (!empty($data['uupasswordold'])) {
                         $errors['uupasswordold'] = get_string('missingfield', 'error', 'password');
                     }
                     break;
@@ -396,7 +422,7 @@ class admin_uploadpossehluser_form2 extends moodleform {
                         $errors['uupasswordnew'] = get_string('missingfield', 'error', 'password');
                     }
                     break;
-             }
+            }
         }
 
         // If the 'Existing user details' value is set we need to ensure that the
@@ -429,7 +455,8 @@ class admin_uploadpossehluser_form2 extends moodleform {
      *
      * @return stdClass
      */
-    function get_data() {
+    function get_data()
+    {
         $data = parent::get_data();
 
         if ($data !== null and isset($data->description)) {
@@ -445,8 +472,9 @@ class admin_uploadpossehluser_form2 extends moodleform {
      *
      * @return array
      */
-    public function get_form_for_cli() {
-        $elements = array_filter($this->_form->_elements, function($element) {
+    public function get_form_for_cli()
+    {
+        $elements = array_filter($this->_form->_elements, function ($element) {
             return !in_array($element->getName(), ['buttonar', 'uubulk']);
         });
         return [$elements, $this->_form->_defaultValues];
@@ -457,7 +485,8 @@ class admin_uploadpossehluser_form2 extends moodleform {
      *
      * @return array
      */
-    public function get_validation_errors(): array {
+    public function get_validation_errors(): array
+    {
         return $this->_form->_errors;
     }
 }
