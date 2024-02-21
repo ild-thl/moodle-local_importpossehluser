@@ -71,6 +71,21 @@ function get_data_from_external_db()
             AND `givenname` <> ''";
 
     $result = $conn->query($sql);
+
+    $conn->close();
+    echo "var dump: <br/>"; 
+    var_dump($result);
+
+    //for every entry in result, echo all data
+    echo "<br><br><br>result: <br/>"; 
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            echo "givenname: " . $row["givenname"] . " - sn: " . $row["sn"] . " - mail: " . $row["mail"] . " - sid: " . $row["sid"] . " - penDisabled: " . $row["penDisabled"] . " - updatedAt: " . $row["updatedAt"] . "<br>";
+        }
+    } else {
+        echo "0 results";
+    }
+
     return $result;
 }
 
