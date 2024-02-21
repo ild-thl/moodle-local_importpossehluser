@@ -67,8 +67,10 @@ function get_data_from_external_db()
     $sql = "SELECT `givenname`, `sn`, `mail`, `sid`, `penDisabled`, `updatedAt` 
             FROM `" . $tablename . "` 
             WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)) 
+            AND `givenname` <> ''
             AND `sn` <> '' 
-            AND `givenname` <> ''";
+            AND `mail` <> ''
+            ";
 
     $result = $conn->query($sql);
 
