@@ -172,6 +172,9 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                 echo 'DB error (email): ' . $e->getMessage();
             }
 
+            //for cleaning up firstname and lastname, unallowed characters
+            $removers = array(",", ".", ";");
+
             //if user with certain sid already exists in Moodle DB, then update user
             if (isset($userid) && !empty($userid) && $row["sid"] == $userid) {
                 echo "User mit sid " . $row["mail"] . " already exists in Moodle-database, will be updated.\n";
@@ -179,6 +182,11 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                 $userobj->username = $row["mail"];
                 $userobj->firstname = $row["givenname"];
                 $userobj->lastname = $row["sn"];
+
+                //clean up firstname and lastname, unallowed characters
+                $userobj->firstname = str_replace($removers, "", $row["givenname"]);
+                $userobj->lastname = str_replace($removers, "", $row["sn"]);
+
                 $userobj->email = $row["mail"];
                 //$userobj->idnumber = $row["sid"];
                 $userobj->profile_field_unternehmen = substr(strrchr($row["mail"], "@"), 1);
@@ -194,8 +202,9 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                 echo "User mit email " . $row["mail"] . " already exists in Moodle-database, will be updated.\n";
 
                 //$userobj->username = $row["mail"];
-                $userobj->firstname = $row["givenname"];
-                $userobj->lastname = $row["sn"];
+                //clean up firstname and lastname, unallowed characters
+                $userobj->firstname = str_replace($removers, "", $row["givenname"]);
+                $userobj->lastname = str_replace($removers, "", $row["sn"]);
                 $userobj->email = $row["mail"];
                 $userobj->profile_field_sidnumber = $row["sid"];
                 $userobj->profile_field_unternehmen = substr(strrchr($row["mail"], "@"), 1);
@@ -209,8 +218,8 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
             else {
                 echo "User " . $row["mail"] . " does not exist in Moodle-database, will be created.\n";
                 $username = $row["mail"];
-                $firstname = $row["givenname"];
-                $lastname = $row["sn"];
+                $firstname = str_replace($removers, "", $row["givenname"]);;
+                $lastname = str_replace($removers, "", $row["sn"]);
                 $email = $row["mail"];
                 $profileFieldSidnumber = $row["sid"];
                 //$profileFieldEnterprise = " ";

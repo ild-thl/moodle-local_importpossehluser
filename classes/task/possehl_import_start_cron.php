@@ -123,6 +123,8 @@ function start_import_process()
 
     $i = 0;
     $all_emails = array();
+     //for cleaning up firstname and lastname, unallowed characters
+     $removers = array(",", ".", ";");
     if ($result) {
         $table_header = "username,firstname,lastname,email,profile_field_sidnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
@@ -134,8 +136,8 @@ function start_import_process()
                 $i++;
                 $row = $result->fetch_assoc();
                 $username = $row["mail"];
-                $firstname = $row["givenname"];
-                $lastname = $row["sn"];
+                $firstname = str_replace($removers, "", $row["givenname"]);;
+                $lastname = str_replace($removers, "", $row["sn"]);
                 $email = $row["mail"];
 
                 //append email to array
