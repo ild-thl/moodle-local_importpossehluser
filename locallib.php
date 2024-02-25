@@ -153,21 +153,44 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
         $table_header = "username,firstname,lastname,email,profile_field_sidnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
         while ($row = $result->fetch_assoc()) {
+            //helper variables for checking if user with certain sid or email already exists in Moodle DB
+            $sid_in_mdl = FALSE;
+            $email_in_mdl = FALSE;
 
             //check if user with sid already exists in Moodle DB
             try {
-                $sql = "SELECT userid FROM {user_info_data} WHERE data = " . $row["sid"];
-                $user_record = $DB->get_record_sql($sql);
-                $userobj = $DB->get_record('user', array('id' => $user_record->userid));
-                $userid = $userobj->id;
+                $sid = $row["sid"];
+                $user_record = $DB->get_record_sql('SELECT userid FROM {user_info_data} WHERE data = ?', array($sid));
+                if ($user_record) {
+                    $sid_in_mdl = TRUE;
+                    $userid = $DB->get_field('user', 'id', array('id' => $user_record->userid));
+                    echo "User mit sid " . $sid . " in Moodle DB gefunden, hat userid " . $userid . "\n";
+                    $userobj_sid = $DB->get_record('user', array('id' => $userid));
+                } else {
+                    $sid_in_mdl = FALSE;
+                    echo "User mit sid " . $sid . " not found, email: " . $row["mail"] . "\n";
+                }
+
+
+
+                //get user object from moodle db with certain userid
             } catch (dml_exception $e) {
                 echo 'DB error (sid): ' . $e->getMessage();
             }
 
             //check if user with email already exists in Moodle DB
             try {
-                $userobj = $DB->get_record('user', ['email' => $row["mail"]]);
-                $useremail = $userobj->email;
+                //get user object from moodle db with certain email
+
+                $userobj_mail = $DB->get_record('user', ['email' => $row["mail"]]);
+                if ($userobj_mail->email == $row["mail"]) {
+                    echo "User mit email " . $row["mail"] . " gefunden, hat moodle email  " . $userobj_mail->email . "\n";
+                    $userid = $DB->get_field('user', 'id', array('email' => $row["mail"]));
+                    $email_in_mdl = TRUE;
+                } else {
+                    $email_in_mdl = FALSE;
+                    echo "User with email " . $row["mail"] . " not found.\n";
+                }
             } catch (dml_exception $e) {
                 echo 'DB error (email): ' . $e->getMessage();
             }
@@ -176,43 +199,139 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
             $removers = array(",", ".", ";");
 
             //if user with certain sid already exists in Moodle DB, then update user
-            if (isset($userid) && !empty($userid) && $row["sid"] == $userid) {
-                echo "User mit sid " . $row["mail"] . " already exists in Moodle-database, will be updated.\n";
-                //update user in moodle db
-                $userobj->username = $row["mail"];
-                $userobj->firstname = $row["givenname"];
-                $userobj->lastname = $row["sn"];
 
-                //clean up firstname and lastname, unallowed characters
-                $userobj->firstname = str_replace($removers, "", $row["givenname"]);
-                $userobj->lastname = str_replace($removers, "", $row["sn"]);
+            if ($sid_in_mdl == TRUE) {
 
-                $userobj->email = $row["mail"];
-                //$userobj->idnumber = $row["sid"];
-                $userobj->profile_field_unternehmen = substr(strrchr($row["mail"], "@"), 1);
-                $userobj->profile_field_userimport = "automatisch";
-                $userobj->cohort1 = $userobj->profile_field_unternehmen;
-                $userobj->suspended = $row["penDisabled"];
-                $DB->update_record('user', $userobj);
-                echo "User " . $row["mail"] . " updated sucessfully via sid.\n";
+                //clean up firstname and lastname, unallowed characters, update data in user table
+                $userobj_sid->firstname = str_replace($removers, "", $row["givenname"]);
+                $userobj_sid->lastname = str_replace($removers, "", $row["sn"]);
+
+
+                //update data in user table using user object
+                $userobj_sid->email = $row["mail"];
+                $userobj_sid->cohort1 = substr(strrchr($row["mail"], "@"), 1);
+                $userobj_sid->suspended = $row["penDisabled"];
+                $DB->update_record('user', $userobj_sid);
+
+                //update data in user_info_data table; get ids of fields
+                $userimport_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('userimport'));
+                $unternehmen_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('unternehmen'));
+                //$sidnumber_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('sidnumber'));
+
+
+                //prepare data
+                $enterprise_string = substr(strrchr($row["mail"], "@"), 1);
+                $import_string = "automatisch";
+                //$sid_nbr = $row["sid"];
+
+                // create or update user_info_data for import-value
+                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $userimport_id));
+
+                // create or update existing record
+                if ($record) {
+                    // Update existing record
+                    $record->data = $import_string;
+                    $DB->update_record('user_info_data', $record);
+                } else {
+                    // Insert new record
+                    $record = new stdClass();
+                    $record->userid = $userid;
+                    $record->fieldid = $userimport_id;
+                    $record->data = $import_string;
+                    $DB->insert_record('user_info_data', $record);
+                }
+
+                // create or update user_info_data for unternehmen
+                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $unternehmen_id));
+
+                if ($record) {
+                    // Update existing record
+                    $record->data = $enterprise_string;
+                    $DB->update_record('user_info_data', $record);
+                } else {
+                    // Insert new record
+                    $record = new stdClass();
+                    $record->userid = $userid;
+                    $record->fieldid = $unternehmen_id;
+                    $record->data = $enterprise_string;
+                    $DB->insert_record('user_info_data', $record);
+                }
+
+                echo "(sid-update) User " . $row["mail"] . " updated sucessfully via sid.\n";
             }
 
-            //if user with certain email already exists in Moodle DB
-            elseif ($useremail == $row["mail"]) {
-                echo "User mit email " . $row["mail"] . " already exists in Moodle-database, will be updated.\n";
-
-                //$userobj->username = $row["mail"];
+            //if sid does not exist, but user with certain email exists in Moodle DB
+            elseif ($email_in_mdl == TRUE) {
                 //clean up firstname and lastname, unallowed characters
-                $userobj->firstname = str_replace($removers, "", $row["givenname"]);
-                $userobj->lastname = str_replace($removers, "", $row["sn"]);
-                $userobj->email = $row["mail"];
-                $userobj->profile_field_sidnumber = $row["sid"];
-                $userobj->profile_field_unternehmen = substr(strrchr($row["mail"], "@"), 1);
-                $userobj->profile_field_userimport = "automatisch";
-                $userobj->cohort1 = $userobj->profile_field_unternehmen;
-                $userobj->suspended = $row["penDisabled"];
-                $DB->update_record('user', $userobj);
-                echo "User " . $row["mail"] . " updated sucessfully via email.\n";
+                $userobj_mail->firstname = str_replace($removers, "", $row["givenname"]);
+                $userobj_mail->lastname = str_replace($removers, "", $row["sn"]);
+
+
+                //update data in user table using user object
+                $userobj_mail->cohort1 = substr(strrchr($row["mail"], "@"), 1);
+                $userobj_mail->suspended = $row["penDisabled"];
+                $DB->update_record('user', $userobj_mail);
+
+                //update data in user_info_data table
+                //get id of specific user_info_field
+                $unternehmen_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('unternehmen'));
+                $userimport_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('userimport'));
+                $sidnumber_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('sidnumber'));
+
+                //prepare data
+                $enterprise_string = substr(strrchr($row["mail"], "@"), 1);
+                $import_string = "automatisch";
+                $sid_nbr = $row["sid"];
+
+                // create or update user_info_data for unternehmen
+                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $unternehmen_id));
+
+                if ($record) {
+                    // Update existing record
+                    $record->data = $enterprise_string;
+                    $DB->update_record('user_info_data', $record);
+                } else {
+                    // Insert new record
+                    $record = new stdClass();
+                    $record->userid = $userid;
+                    $record->fieldid = $unternehmen_id;
+                    $record->data = $enterprise_string;
+                    $DB->insert_record('user_info_data', $record);
+                }
+
+                // create or update user_info_data for import-value
+                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $userimport_id));
+
+                if ($record) {
+                    // create or update existing record
+                    $record->data = $import_string;
+                    $DB->update_record('user_info_data', $record);
+                } else {
+                    // Insert new record
+                    $record = new stdClass();
+                    $record->userid = $userid;
+                    $record->fieldid = $userimport_id;
+                    $record->data = $import_string;
+                    $DB->insert_record('user_info_data', $record);
+                }
+
+                // create or update user_info_data for sidnumber
+                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $sidnumber_id));
+
+                if ($record) {
+                    // create or update existing record
+                    $record->data = $sid_nbr;
+                    $DB->update_record('user_info_data', $record);
+                } else {
+                    // Insert new record
+                    $record = new stdClass();
+                    $record->userid = $userid;
+                    $record->fieldid = $sidnumber_id;
+                    $record->data = $sid_nbr;
+                    $DB->insert_record('user_info_data', $record);
+                }
+
+                echo "(email-update) User " . $row["mail"] . " updated sucessfully via email.\n";
             }
             //if no user data in moodle db, create new user
             else {
