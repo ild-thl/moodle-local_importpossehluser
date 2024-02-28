@@ -203,6 +203,7 @@ function start_import_process()
     foreach ($emails_and_updated as $item) {
         $email = $item['email'];
         $updatedAt = $item['updatedAt'];
+        
         $user = $DB->get_record('user', array('email' => $email));
         $user->lastlogin = strtotime($updatedAt);
         $DB->update_record('user', $user);

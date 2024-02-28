@@ -546,7 +546,7 @@ function delete_disabled_users_from_moodle_db_data($timespan)
             $lastlogin = $record->lastlogin;
             $suspended = $record->suspended;
             $timestamp_now = time();
-            $timestamp_udate_in_db = strtotime($lastlogin);
+            $timestamp_udate_in_db = $lastlogin;
             $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
 
             //calc difference now - last login
