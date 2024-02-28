@@ -114,6 +114,8 @@ function start_process()
      */
     $csv_data = update_existing_user_prepare_csv_data_for_new_user($result);
 
+    /*TODO: set last_login to current val*/
+
 
 
     //back to normal csv-process, see admin/tool/uploaduser

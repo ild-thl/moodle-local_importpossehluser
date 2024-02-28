@@ -486,15 +486,18 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
     if ($result) {
         foreach ($result as $row) {
             $username = $row['mail'];
-            $timestamp_now = strtotime(date("Y-m-d H:i:s"));
+            $timestamp_now = time();
             $timestamp_udate_in_db = strtotime($row['updatedAt']);
-            $lastupdated_at = strtotime(date("Y-m-d H:i:s")) - strtotime($row['updatedAt']);
-            $last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
+            $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
+            //$lastupdated_at = strtotime(date("Y-m-d H:i:s")) - strtotime($row['updatedAt']);
+            //$last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
 
-            if ($row['penDisabled'] == 1 && $lastupdated_at >= $last_val_in_timespan) {
+            //if ($row['penDisabled'] == 1 && $lastupdated_at >= $last_val_in_timespan) {
+            if ($row['penDisabled'] == 1 && $timestamp_now - $timestamp_udate_in_db >= $timespan_in_sec) {
 
                 //calculate the difference in weeks
-                $weeks = floor($lastupdated_at / (60 * 60 * 24 * 7));
+                $last_update_since =  $timestamp_now - $timestamp_udate_in_db;
+                $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
                 echo "From external DB: User " . $username . " disabled = " . $row['penDisabled'] . " and last updated " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
 
                 try {
@@ -542,22 +545,26 @@ function delete_disabled_users_from_moodle_db_data($timespan)
             $username = $record->username;
             $lastlogin = $record->lastlogin;
             $suspended = $record->suspended;
-            $timestamp_now = strtotime(date("Y-m-d H:i:s"));
+            $timestamp_now = time();
             $timestamp_udate_in_db = strtotime($lastlogin);
+            $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
+
             //calc difference now - last login
-            $lastlogin_at = strtotime(date("Y-m-d H:i:s")) - strtotime($lastlogin);
-            $last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
+            //$lastlogin_at = strtotime(date("Y-m-d H:i:s")) - strtotime($lastlogin);
+            //$last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
             //calc value diff - timespan in month
 
 
 
 
-            if ($suspended == 1 && $lastlogin_at <= $last_val_in_timespan) {
+            if ($suspended == 1 && $timestamp_now - $timestamp_udate_in_db >= $timespan_in_sec) {
                 echo $record->username . ": suspended = " . $record->suspended . "\n";
                 $timestamp_now = strtotime(date("Y-m-d H:i:s"));
                 $timestamp_udate_in_db = strtotime($lastlogin);
                 //calculate the difference in weeks
-                $weeks = floor($lastlogin_at / (60 * 60 * 24 * 7));
+                $last_update_since =  $timestamp_now - $timestamp_udate_in_db;
+
+                $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
                 echo "From Moodle DB: User " . $username . " disabled and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
                 $DB->delete_records('user', array('username' => $username));
                 echo "User " . $username . " deleted sucessfully.\n";
