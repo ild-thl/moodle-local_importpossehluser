@@ -91,7 +91,19 @@ function start_process()
      * @return mixed The data retrieved from the database.
      */
 
-    $result = get_data_from_external_db();
+     
+    $tablename = get_tablename();
+    $timespan =  get_delete_timespan();
+
+    //get data from external db
+    $sql = "SELECT `givenname`, `sn`, `mail`, `sid`, `penDisabled`, `updatedAt` 
+    FROM `" . $tablename . "` 
+    WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " . $timespan . " MONTH))) 
+    AND `givenname` <> ''
+    AND `sn` <> '' 
+    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';"; 
+    
+    $result = get_data_from_external_db($sql);
 
     /**
      * Updates existing user and 

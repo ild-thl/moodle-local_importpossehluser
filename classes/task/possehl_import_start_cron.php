@@ -85,7 +85,24 @@ function start_import_process()
 
     global $DB;
 
-    $result = get_data_from_external_db();
+    $tablename = get_tablename();
+    $timespan =  get_delete_timespan();
+
+    //get data from external db
+    $sql = "SELECT `givenname`, `sn`, `mail`, `sid`, `penDisabled`, `updatedAt` 
+    FROM `" . $tablename . "` 
+    WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " . $timespan . " MONTH))) 
+    AND `givenname` <> ''
+    AND `sn` <> '' 
+    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';"; 
+    
+    $result = get_data_from_external_db($sql);
+
+    if($result->num_rows > 0) {
+        echo "Users to import: " . $result->num_rows . "\n";
+    } else {
+        echo "No users to import";
+    }
 
 
     /**
@@ -122,9 +139,9 @@ function start_import_process()
     }
 
     $i = 0;
-    $all_emails = array();
-     //for cleaning up firstname and lastname, unallowed characters
-     $removers = array(",", ".", ";");
+    $emails_and_updated = array();
+    //for cleaning up firstname and lastname, unallowed characters
+    $removers = array(",", ".", ";");
     if ($result) {
         $table_header = "username,firstname,lastname,email,profile_field_sidnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
@@ -139,9 +156,10 @@ function start_import_process()
                 $firstname = str_replace($removers, "", $row["givenname"]);;
                 $lastname = str_replace($removers, "", $row["sn"]);
                 $email = $row["mail"];
+                $updatedAt = $row["updatedAt"];
 
                 //append email to array
-                array_push($all_emails, $email);
+                array_push($emails_and_updated, array('email' => $email, 'updatedAt' => $updatedAt));
 
                 $profileFieldSidnumber = $row["sid"];
                 //use email domain as enterprise
@@ -182,9 +200,12 @@ function start_import_process()
     possehl_process($csv_data);
 
     //set lastlogin in user table in db to current time for all imported user in this chunk 
-    for ($i = 0; $i < count($all_emails); $i++) {
-        $user = $DB->get_record('user', array('email' => $all_emails[$i]));
-        $user->lastlogin = time();
+    foreach ($emails_and_updated as $item) {
+        $email = $item['email'];
+        $updatedAt = $item['updatedAt'];
+        $user = $DB->get_record('user', array('email' => $email));
+        $user->lastlogin = strtotime($updatedAt);
         $DB->update_record('user', $user);
+        echo "lastlogin set to " . $user->lastlogin . " for email " .  $user->email . "\n";
     }
 }

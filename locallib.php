@@ -29,7 +29,7 @@ defined('MOODLE_INTERNAL') || die();
  *
  * @return mysqli_result|bool The result of the database query or false if there is no connection.
  */
-function get_data_from_external_db()
+function get_data_from_external_db($sql)
 {
     global $DB;
 
@@ -52,28 +52,26 @@ function get_data_from_external_db()
 
 
     // Create connection
-    $conn = new mysqli($servername, $username, $password, $dbname);
-    // Check connection
-    if ($conn->connect_error) {
-        echo "connection failed";
-        die("Connection failed: " . $conn->connect_error);
+    try {
+        $conn = new mysqli($servername, $username, $password, $dbname);
+        // Check connection
+        if ($conn->connect_error) {
+            echo "connection failed";
+            die("Connection failed: " . $conn->connect_error);
+        }
+
+        //get all users from external db matching the criteria 
+        //(penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)   
+        //must have sn and givenname entry 
+
+
+
+        $result = $conn->query($sql);
+        $conn->close();
+        return $result;
+    } catch (Exception $e) {
+        echo "Error: " . $e->getMessage();
     }
-
-    //get all users from external db matching the criteria 
-    //(penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)   
-    //must have sn and givenname entry 
-    $tablename = get_tablename();
-    $timespan =  get_delete_timespan();
-    $sql = "SELECT `givenname`, `sn`, `mail`, `sid`, `penDisabled`, `updatedAt` 
-            FROM `" . $tablename . "` 
-            WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > CURRENT_TIMESTAMP - INTERVAL " . $timespan . " MONTH)) 
-            AND `givenname` <> ''
-            AND `sn` <> '' 
-            AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';";
-
-    $result = $conn->query($sql);
-    $conn->close();
-    return $result;
 }
 
 
@@ -136,7 +134,10 @@ function get_delete_timespan()
 function update_existing_user_prepare_csv_data_for_new_user($result)
 {
     global $DB;
+    $emails_and_updated = array();
+
     if ($result) {
+        var_dump($result);
         /*prepare data for moodle import, will be csv-upload file data for moodle csv-import-process
         * create table header
         * 
@@ -160,41 +161,59 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
             //check if user with sid already exists in Moodle DB
             try {
                 $sid = $row["sid"];
-                $user_record = $DB->get_record_sql('SELECT userid FROM {user_info_data} WHERE data = ?', array($sid));
-                if ($user_record) {
+                $user_records_sid = $DB->get_records_sql('SELECT userid FROM {user_info_data} WHERE data = ?', array($sid));
+                //progress if  user with unique sid found
+                if (count($user_records_sid) == 1) {
+                    $user_record_sid = reset($user_records_sid);
+
                     $sid_in_mdl = TRUE;
-                    $userid = $DB->get_field('user', 'id', array('id' => $user_record->userid));
+                    $userid = $DB->get_field('user', 'id', array('id' => $user_record_sid->userid));
                     echo "User mit sid " . $sid . " in Moodle DB gefunden, hat userid " . $userid . "\n";
                     $userobj_sid = $DB->get_record('user', array('id' => $userid));
+                } else if (count($user_records_sid) > 1) {
+                    echo "*** More than one user with sid " . $row["sid"] . " found. ***\n";
+                    $sid_in_mdl = FALSE;
                 } else {
                     $sid_in_mdl = FALSE;
                     echo "User mit sid " . $sid . " not found, email: " . $row["mail"] . "\n";
                 }
-
-
 
                 //get user object from moodle db with certain userid
             } catch (dml_exception $e) {
                 echo 'DB error (sid): ' . $e->getMessage();
             }
 
-            //check if user with email already exists in Moodle DB
-            try {
-                //get user object from moodle db with certain email
+            //check if user with email already exists in Moodle DB only if sid not found
+            if ($sid_in_mdl == FALSE) {
 
-                $userobj_mail = $DB->get_record('user', ['email' => $row["mail"]]);
-                if ($userobj_mail->email == $row["mail"]) {
-                    echo "User mit email " . $row["mail"] . " gefunden, hat moodle email  " . $userobj_mail->email . "\n";
-                    $userid = $DB->get_field('user', 'id', array('email' => $row["mail"]));
-                    $email_in_mdl = TRUE;
-                } else {
-                    $email_in_mdl = FALSE;
-                    echo "User with email " . $row["mail"] . " not found.\n";
+                //check if user with email already exists in Moodle DB
+                try {
+                    //get user object from moodle db with certain email
+                    $user_records_mail = $DB->get_records('user', ['email' => $row["mail"]]);
+                    //progress if  user with unique email found
+                    if (count($user_records_mail) == 1) {
+
+                        $user_record_mail = reset($user_records_mail);
+                        if ($user_record_mail->email == $row["mail"]) {
+                            $userobj_mail = $DB->get_record('user', ['email' => $row["mail"]]);
+                            echo "User mit email " . $row["mail"] . " gefunden, hat moodle email  " . $userobj_mail->email . "\n";
+                            $userid = $DB->get_field('user', 'id', array('email' => $row["mail"]));
+                            $email_in_mdl = TRUE;
+                        } else {
+                            $email_in_mdl = FALSE;
+                            echo "User with email " . $row["mail"] . " not found.\n";
+                        }
+                    } else if (count($user_records_mail) > 1) {
+                        echo "*** More than one user with email " . $row["mail"] . " found. ***\n";
+                        $email_in_mdl = FALSE;
+                    } else {
+                        $email_in_mdl = FALSE;
+                        echo "User with email " . $row["mail"] . " not found.\n";
+                    }
+                } catch (dml_exception $e) {
+                    echo 'DB error (email): ' . $e->getMessage();
                 }
-            } catch (dml_exception $e) {
-                echo 'DB error (email): ' . $e->getMessage();
             }
-
             //for cleaning up firstname and lastname, unallowed characters
             $removers = array(",", ".", ";");
 
@@ -340,6 +359,12 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                 $firstname = str_replace($removers, "", $row["givenname"]);;
                 $lastname = str_replace($removers, "", $row["sn"]);
                 $email = $row["mail"];
+                $updatedAt = $row["updatedAt"];
+
+                //append email to array
+                array_push($emails_and_updated, array('email' => $email, 'updatedAt' => $updatedAt));
+
+
                 $profileFieldSidnumber = $row["sid"];
                 //$profileFieldEnterprise = " ";
                 $profileFieldEnterprise = substr(strrchr($email, "@"), 1);
@@ -444,7 +469,7 @@ function possehl_process($data): void
  * @param int $timespan The specified timespan in month.
  * @return void
  */
-function delete_disabled_users_from_external_db_data($result)
+function delete_disabled_users_from_external_db_data($result, $timespan)
 {
     /**
      * This script is responsible for deleting users from the Moodle database
@@ -459,15 +484,16 @@ function delete_disabled_users_from_external_db_data($result)
     echo "timespan for deletion in month = " . get_delete_timespan() . "\n\n";
     global $DB;
     if ($result) {
-        $count = $result->num_rows;
-        for ($l = 0; $l < $count; $l++) {
-            if ($result->data_seek($l)) {
-                $row = $result->fetch_assoc();
-                $username = $row['mail'];
-                $diff = strtotime(date("Y-m-d H:i:s")) - strtotime($row['updatedAt']);
+        foreach ($result as $row) {
+            $username = $row['mail'];
+            $lastupdated_at = strtotime(date("Y-m-d H:i:s")) - strtotime($row['updatedAt']);
+            $last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
+
+            if ($row['penDisabled'] == 1 && $lastupdated_at >= $last_val_in_timespan) {
+
                 //calculate the difference in weeks
-                $weeks = floor($diff / (60 * 60 * 24 * 7));
-                echo "From external DB: User " . $username . " disabled and last updated " . $weeks . " weeks ago\n";
+                $weeks = floor($lastupdated_at / (60 * 60 * 24 * 7));
+                echo "From external DB: User " . $username . " disabled = " . $row['penDisabled'] . " and last updated " . $weeks . " weeks ago\n";
 
                 try {
                     $userExists = $DB->get_record('user', array('username' => $username));
@@ -481,6 +507,8 @@ function delete_disabled_users_from_external_db_data($result)
                 } catch (dml_exception $e) {
                     echo "Fehler beim Löschen des Benutzers: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
                 }
+            } else {
+                echo "User " . $username . " will not be deleted.\n";
             }
         }
         // }
@@ -505,20 +533,33 @@ function delete_disabled_users_from_moodle_db_data($timespan)
     global $DB;
 
     //sql call to get all moodle users from moodle table mdl_user with the suspended flag set to 1 and lastlogin older than timespan in month
-    $sql = "SELECT username, lastlogin FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
+    $sql = "SELECT username, lastlogin, suspended FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
     try {
         $records = $DB->get_records_sql($sql);
         foreach ($records as $record) {
             $username = $record->username;
             $lastlogin = $record->lastlogin;
-            //calc difference in weeks from now to last login
-            $diff = strtotime(date("Y-m-d H:i:s")) - strtotime($lastlogin);
+            $suspended = $record->suspended;
 
-            //calculate the difference in weeks
-            $weeks = floor($diff / (60 * 60 * 24 * 7));
-            echo "From Moodle DB: User " . $username . " disabled and last login " . $weeks . " weeks ago\n";
-            $DB->delete_records('user', array('username' => $username));
-            echo "User " . $username . " deleted sucessfully.\n";
+            //calc difference now - last login
+            $lastlogin_at = strtotime(date("Y-m-d H:i:s")) - strtotime($lastlogin);
+            $last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
+            //calc value diff - timespan in month
+
+
+
+
+            if ($suspended == 1 && $lastlogin_at <= $last_val_in_timespan) {
+                echo $record->username . ": suspended = " . $record->suspended . "\n";
+
+                //calculate the difference in weeks
+                $weeks = floor($lastlogin_at / (60 * 60 * 24 * 7));
+                echo "From Moodle DB: User " . $username . " disabled and last login " . $weeks . " weeks ago\n";
+                $DB->delete_records('user', array('username' => $username));
+                echo "User " . $username . " deleted sucessfully.\n";
+            } else {
+                echo "User " . $username . " will not be deleted.\n";
+            }
         }
     } catch (dml_exception $e) {
         echo 'DB error: ' . $e->getMessage();

@@ -75,10 +75,21 @@ function start_delete_process()
 
 
     //get data from external db
-    $result = get_data_from_external_db();
+    $tablename = get_tablename();
+    $timespan =  get_delete_timespan();
+
+    //get data from external db
+    $sql = "SELECT `givenname`, `sn`, `mail`, `sid`, `penDisabled`, `updatedAt` 
+    FROM `" . $tablename . "` 
+    WHERE penDisabled = 1 
+    AND updatedAt < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " . $timespan . " MONTH)
+    AND `givenname` <> ''
+    AND `sn` <> '' 
+    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';";
+    $result = get_data_from_external_db($sql);
 
     //step 1: delete moodle user if matches certain criteria from external db 
-    delete_disabled_users_from_external_db_data($result);
+    delete_disabled_users_from_external_db_data($result, $timespan);
 
 
     //step 2 (fallback): delete moodle users if they match the moodle-intern criteria
