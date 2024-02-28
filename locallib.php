@@ -24,6 +24,7 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
+
 /**
  * Retrieves data from the database matching certain criteria (see sql-statement).
  *
@@ -32,7 +33,6 @@ defined('MOODLE_INTERNAL') || die();
 function get_data_from_external_db($sql)
 {
     global $DB;
-
     if ($DB->get_records('config')) {
         //get Server-Connection-Params from DB -> saved in settings.php
         $serverobj = $DB->get_record('config', ['name' => 'local_importpossehluser_servername']);

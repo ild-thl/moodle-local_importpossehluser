@@ -91,7 +91,7 @@ function start_process()
      * @return mixed The data retrieved from the database.
      */
 
-     
+
     $tablename = get_tablename();
     $timespan =  get_delete_timespan();
 
@@ -101,8 +101,8 @@ function start_process()
     WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " . $timespan . " MONTH))) 
     AND `givenname` <> ''
     AND `sn` <> '' 
-    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';"; 
-    
+    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';";
+
     $result = get_data_from_external_db($sql);
 
     /**
@@ -114,7 +114,24 @@ function start_process()
      */
     $csv_data = update_existing_user_prepare_csv_data_for_new_user($result);
 
-    /*TODO: set last_login to current val*/
+    $result = get_data_from_external_db($sql);
+    foreach ($result as $row) {
+        //get user by email and check if lastlogin is set
+        global $DB;
+        $userobj_new = $DB->get_record('user', ['email' => $row["mail"]]);
+
+        if ($userobj_new) {
+
+            //if lastlogin is not set, add to array
+            if ($userobj_new->lastlogin == 0) {
+                $updatedAt = $row['updatedAt'];
+                $userobj_new->lastlogin = strtotime($updatedAt);
+                $DB->update_record('user', $userobj_new);
+                echo "lastlogin set to " . $userobj_new->lastlogin . " for new import with email " .  $userobj_new->email . "\n";
+            }
+        }
+    }
+
 
 
 
