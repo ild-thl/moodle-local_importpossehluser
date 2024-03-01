@@ -510,6 +510,7 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
 
                         //delete record in table user_info_data
                         $DB->delete_records('user_info_data', array('userid' => $userid));
+                        $DB->delete_records('user_info_data', array('data' => $row['penDisabled']));
 
                         echo "User " . $username . " deleted sucessfully.\n";
                     } else {
