@@ -94,11 +94,11 @@ function start_import_process()
     WHERE (penDisabled = 0 OR (penDisabled = 1 AND updatedAt > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL " . $timespan . " MONTH))) 
     AND `givenname` <> ''
     AND `sn` <> '' 
-    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';"; 
-    
+    AND `mail` REGEXP '^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$';";
+
     $result = get_data_from_external_db($sql);
 
-    if($result->num_rows > 0) {
+    if ($result->num_rows > 0) {
         echo "Users to import: " . $result->num_rows . "\n";
     } else {
         echo "No users to import";
@@ -143,9 +143,20 @@ function start_import_process()
     //for cleaning up firstname and lastname, unallowed characters
     $removers = array(",", ".", ";");
     if ($result) {
+
+        /*TODO: remove, only for testing*/
+        //clear user_info_data table
+        if ($count == 0) {
+            $DB->delete_records('user_info_data');
+        }
+
+
+
+
         $table_header = "username,firstname,lastname,email,profile_field_sidnumber,profile_field_unternehmen,profile_field_userimport,cohort1,suspended";
         $csv_data = $table_header . "\n";
 
+        
 
 
         for ($l = $count; $l < $count + $amount; $l++) {
@@ -203,7 +214,7 @@ function start_import_process()
     foreach ($emails_and_updated as $item) {
         $email = $item['email'];
         $updatedAt = $item['updatedAt'];
-        
+
         $user = $DB->get_record('user', array('email' => $email));
         $user->lastlogin = strtotime($updatedAt);
         $DB->update_record('user', $user);
