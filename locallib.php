@@ -504,7 +504,13 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
                     $userExists = $DB->get_record('user', array('username' => $username));
 
                     if ($userExists) {
+                        $userid = $userExists->id;
+                        //delete record in table user
                         $DB->delete_records('user', array('username' => $username));
+
+                        //delete record in table user_info_data
+                        $DB->delete_records('user_info_data', array('userid' => $userid));
+
                         echo "User " . $username . " deleted sucessfully.\n";
                     } else {
                         echo "User " . $username . " does not exist in Moodle-database.\n";
