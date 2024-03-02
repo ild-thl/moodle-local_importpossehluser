@@ -146,8 +146,10 @@ function start_import_process()
 
         /*TODO: remove, only for testing*/
         //clear user_info_data table
-        if ($count == 0) {
+        if ($count == -1) {
+            echo "clear user_info_data table"; 
             $DB->delete_records('user_info_data');
+            $count = 0; //reset count
         }
 
 

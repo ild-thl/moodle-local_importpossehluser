@@ -134,7 +134,7 @@ function get_delete_timespan()
 function update_existing_user_prepare_csv_data_for_new_user($result)
 {
     global $DB;
-    $emails_and_updated = array();
+    //$emails_and_updated = array();
 
     if ($result) {
         var_dump($result);
@@ -168,14 +168,14 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
 
                     $sid_in_mdl = TRUE;
                     $userid = $DB->get_field('user', 'id', array('id' => $user_record_sid->userid));
-                    echo "User mit sid " . $sid . " in Moodle DB gefunden, hat userid " . $userid . "\n";
+                    //echo "User mit sid " . $sid . " in Moodle DB gefunden, hat userid " . $userid . "\n";
                     $userobj_sid = $DB->get_record('user', array('id' => $userid));
                 } else if (count($user_records_sid) > 1) {
-                    echo "*** More than one user with sid " . $row["sid"] . " found. ***\n";
+                    //echo "*** More than one user with sid " . $row["sid"] . " found. ***\n";
                     $sid_in_mdl = FALSE;
                 } else {
                     $sid_in_mdl = FALSE;
-                    echo "User mit sid " . $sid . " not found, email: " . $row["mail"] . "\n";
+                    echo "User with sid " . $sid . " not found in Moodle DB. \n";
                 }
 
                 //get user object from moodle db with certain userid
@@ -196,19 +196,19 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                         $user_record_mail = reset($user_records_mail);
                         if ($user_record_mail->email == $row["mail"]) {
                             $userobj_mail = $DB->get_record('user', ['email' => $row["mail"]]);
-                            echo "User mit email " . $row["mail"] . " gefunden, hat moodle email  " . $userobj_mail->email . "\n";
+                            //echo "User mit email " . $row["mail"] . " gefunden, hat moodle email  " . $userobj_mail->email . "\n";
                             $userid = $DB->get_field('user', 'id', array('email' => $row["mail"]));
                             $email_in_mdl = TRUE;
                         } else {
                             $email_in_mdl = FALSE;
-                            echo "User with email " . $row["mail"] . " not found.\n";
+                            //echo "User with email " . $row["mail"] . " not found.\n";
                         }
                     } else if (count($user_records_mail) > 1) {
-                        echo "*** More than one user with email " . $row["mail"] . " found. ***\n";
+                        //echo "*** More than one user with email " . $row["mail"] . " found. ***\n";
                         $email_in_mdl = FALSE;
                     } else {
                         $email_in_mdl = FALSE;
-                        echo "User with email " . $row["mail"] . " not found.\n";
+                        echo "User with email " . $row["mail"] . " not found in Moodle DB.\n";
                     }
                 } catch (dml_exception $e) {
                     echo 'DB error (email): ' . $e->getMessage();
@@ -220,6 +220,9 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
             //if user with certain sid already exists in Moodle DB, then update user
 
             if ($sid_in_mdl == TRUE) {
+
+                //set username in user table
+                $userobj_sid->username = $row["mail"];
 
                 //clean up firstname and lastname, unallowed characters, update data in user table
                 $userobj_sid->firstname = str_replace($removers, "", $row["givenname"]);
@@ -362,7 +365,7 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
                 $updatedAt = $row["updatedAt"];
 
                 //append email to array
-                array_push($emails_and_updated, array('email' => $email, 'updatedAt' => $updatedAt));
+                //array_push($emails_and_updated, array('email' => $email, 'updatedAt' => $updatedAt));
 
 
                 $profileFieldSidnumber = $row["sid"];
@@ -501,17 +504,27 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
                 echo "From external DB: User " . $username . " disabled = " . $row['penDisabled'] . " and last updated " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
 
                 try {
-                    $userExists = $DB->get_record('user', array('username' => $username));
+                    //$userExists = $DB->get_record('user', array('username' => $username));
+                    $sql = "SELECT * FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
+                    $userExists = $DB->get_record_sql($sql, array($username)); #
 
                     if ($userExists) {
                         $userid = $userExists->id;
                         $usersid = $row['sid'];
                         //delete record in table user
-                        $DB->delete_records('user', array('username' => $username));
+                        //$DB->delete_records('user', array('username' => $username));
+                        $sqlDeleteUser = "DELETE FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
+                        $DB->execute($sqlDeleteUser, array($username));
 
                         //delete record in table user_info_data
-                        $DB->delete_records('user_info_data', array('userid' => $userid));
+                        //$DB->delete_records('user_info_data', array('userid' => $userid));
+                        $sqlDeleteUserInfoDataByUserId = "DELETE FROM {user_info_data} WHERE userid = ?";
+                        $DB->execute($sqlDeleteUserInfoDataByUserId, array($userid));
+
+                        //delete all entries in user_info_data with certain sid
                         //$DB->delete_records('user_info_data', array('data' => $usersid));
+                        $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
+                        $DB->execute($sqlDeleteUserInfoDataByData, array($usersid));
 
                         echo "User " . $username . " deleted sucessfully.\n";
                     } else {
@@ -551,6 +564,7 @@ function delete_disabled_users_from_moodle_db_data($timespan)
         $records = $DB->get_records_sql($sql);
         foreach ($records as $record) {
             $username = $record->username;
+            $userid = $record->id;
             $lastlogin = $record->lastlogin;
             $suspended = $record->suspended;
             $timestamp_now = time();
@@ -566,15 +580,36 @@ function delete_disabled_users_from_moodle_db_data($timespan)
 
 
             if ($suspended == 1 && $timestamp_now - $timestamp_udate_in_db >= $timespan_in_sec) {
-                echo $record->username . ": suspended = " . $record->suspended . "\n";
                 $timestamp_now = strtotime(date("Y-m-d H:i:s"));
                 $timestamp_udate_in_db = strtotime($lastlogin);
+
                 //calculate the difference in weeks
                 $last_update_since =  $timestamp_now - $timestamp_udate_in_db;
-
                 $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
-                echo "From Moodle DB: User " . $username . " disabled and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
-                $DB->delete_records('user', array('username' => $username));
+                echo "From Moodle DB: User " . $username . " suspended = " . $record->suspended . " and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
+
+                //get sid from this user to delete all entries in user_info_data with certain sid
+                $sidnumber_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('sidnumber'));
+                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $sidnumber_id));
+                if ($record) {
+                    $usersid = $record->data;
+                    //delete all entries in user_info_data with certain sid
+                    //$DB->delete_records('user_info_data', array('data' => $usersid));
+                    $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
+                    $DB->execute($sqlDeleteUserInfoDataByData, array($usersid));
+                }
+
+                //delete all records in table user_info_data of this user
+                //$DB->delete_records('user_info_data', array('userid' => $userid));
+                $sqlDeleteUserInfoDataByUserId = "DELETE FROM {user_info_data} WHERE userid = ?";
+                $DB->execute($sqlDeleteUserInfoDataByUserId, array($userid));
+
+                //delete record in table user
+                //$DB->delete_records('user', array('username' => $username));
+                $sqlDeleteUser = "DELETE FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
+                $DB->execute($sqlDeleteUser, array($username));
+
+
                 echo "User " . $username . " deleted sucessfully.\n";
             } else {
                 echo "User " . $username . " will not be deleted.\n";

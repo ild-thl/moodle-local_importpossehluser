@@ -123,7 +123,7 @@ function start_process()
         if ($userobj_new) {
 
             //if lastlogin is not set, add to array
-            if ($userobj_new->lastlogin == 0) {
+            if ($userobj_new->lastlogin == 0 || empty($userobj_new->lastlogin)) {
                 $updatedAt = $row['updatedAt'];
                 $userobj_new->lastlogin = strtotime($updatedAt);
                 $DB->update_record('user', $userobj_new);
