@@ -568,7 +568,6 @@ function delete_disabled_users_from_moodle_db_data($timespan)
             $lastlogin = $record->lastlogin;
             $suspended = $record->suspended;
             $timestamp_now = time();
-            $timestamp_udate_in_db = $lastlogin;
             $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
 
             //calc difference now - last login
@@ -579,20 +578,23 @@ function delete_disabled_users_from_moodle_db_data($timespan)
 
 
 
-            if ($suspended == 1 && $timestamp_now - $timestamp_udate_in_db >= $timespan_in_sec) {
+            if ($suspended == 1 && $timestamp_now - $lastlogin >= $timespan_in_sec) {
                 $timestamp_now = strtotime(date("Y-m-d H:i:s"));
-                $timestamp_udate_in_db = strtotime($lastlogin);
 
                 //calculate the difference in weeks
-                $last_update_since =  $timestamp_now - $timestamp_udate_in_db;
+                $last_update_since =  $timestamp_now - $lastlogin;
                 $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
-                echo "From Moodle DB: User " . $username . " suspended = " . $record->suspended . " and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
+                echo "From Moodle DB: User " . $username . " suspended = " . $record->suspended . " and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $lastlogin . "\n";
 
                 //get sid from this user to delete all entries in user_info_data with certain sid
                 $sidnumber_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('sidnumber'));
                 $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $sidnumber_id));
                 if ($record) {
                     $usersid = $record->data;
+                    echo "vardump"; 
+
+                    var_dump($record);
+                    echo "\n (moodle delete process) sid of user " . $username . " is " . $usersid . "\n";
                     //delete all entries in user_info_data with certain sid
                     //$DB->delete_records('user_info_data', array('data' => $usersid));
                     $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
