@@ -563,7 +563,7 @@ function delete_disabled_users_from_moodle_db_data($timespan)
     try {
         $records = $DB->get_records_sql($sql);
         foreach ($records as $record) {
-            $username = $record->username;
+            $username = strtolower($record->username);
             $userid = $record->id;
             $lastlogin = $record->lastlogin;
             $suspended = $record->suspended;
