@@ -559,7 +559,7 @@ function delete_disabled_users_from_moodle_db_data($timespan)
     global $DB;
 
     //sql call to get all moodle users from moodle table mdl_user with the suspended flag set to 1 and lastlogin older than timespan in month
-    $sql = "SELECT username, lastlogin, suspended FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
+    $sql = "SELECT * FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
     try {
         $records = $DB->get_records_sql($sql);
         foreach ($records as $record) {
@@ -586,28 +586,37 @@ function delete_disabled_users_from_moodle_db_data($timespan)
                 $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
                 echo "From Moodle DB: User " . $username . " suspended = " . $record->suspended . " and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $lastlogin . "\n";
 
-                //get sid from this user to delete all entries in user_info_data with certain sid
-                $sidnumber_id = $DB->get_field_select('user_info_field', 'id', $DB->sql_compare_text('name') . ' = ?', array('sidnumber'));
-                $record = $DB->get_record('user_info_data', array('userid' => $userid, 'fieldid' => $sidnumber_id));
-                if ($record) {
-                    $usersid = $record->data;
-                    echo "vardump"; 
+                // get sid of a user
+                $fieldname = 'sidnumber';
+                $sql = "SELECT id FROM {user_info_field} WHERE " . $DB->sql_compare_text('name') . " = :fieldname";
+                $params = array('fieldname' => $fieldname);
+                $fieldid = $DB->get_field_sql($sql, $params);
 
-                    var_dump($record);
-                    echo "\n (moodle delete process) sid of user " . $username . " is " . $usersid . "\n";
-                    //delete all entries in user_info_data with certain sid
-                    //$DB->delete_records('user_info_data', array('data' => $usersid));
+                echo "fieldid of sidnumber: " . $fieldid . "\n";
+
+                if ($fieldid !== false) {
+                    //echo "fieldid = " . $fieldid . "; userid = " .$userid.  "\n";
+                    $usersid = $DB->get_field('user_info_data', 'data', array('userid' => $userid, 'fieldid' => $fieldid));
+                    //echo "sid of user " . $username . " is " . $usersid . "\n";
+                } else {
+                    echo "fieldid of sidnumber not found.\n";
+                }
+
+                //delete all entries in user_info_data with certain sid
+                if ($usersid !== false) {
+                    //echo "(moodle delete process) sid of user " . $username . " is " . $usersid . "\n";
                     $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
+                    echo "delete all sid entries in user_info_data with certain sid.\n";
                     $DB->execute($sqlDeleteUserInfoDataByData, array($usersid));
+                } else {
+                    echo "sid if user not found.\n";
                 }
 
                 //delete all records in table user_info_data of this user
-                //$DB->delete_records('user_info_data', array('userid' => $userid));
                 $sqlDeleteUserInfoDataByUserId = "DELETE FROM {user_info_data} WHERE userid = ?";
                 $DB->execute($sqlDeleteUserInfoDataByUserId, array($userid));
 
                 //delete record in table user
-                //$DB->delete_records('user', array('username' => $username));
                 $sqlDeleteUser = "DELETE FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
                 $DB->execute($sqlDeleteUser, array($username));
 

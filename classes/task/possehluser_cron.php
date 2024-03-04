@@ -113,6 +113,7 @@ function start_process()
      * @return array The prepared CSV data.
      */
     $csv_data = update_existing_user_prepare_csv_data_for_new_user($result);
+    possehl_process($csv_data);
 
     $result = get_data_from_external_db($sql);
     foreach ($result as $row) {
@@ -122,7 +123,7 @@ function start_process()
 
         if ($userobj_new) {
 
-            //if lastlogin is not set, add to array
+            //if lastlogin is not set, set to updatedAt from external db
             if ($userobj_new->lastlogin == 0 || empty($userobj_new->lastlogin)) {
                 $updatedAt = $row['updatedAt'];
                 $userobj_new->lastlogin = strtotime($updatedAt);
@@ -142,5 +143,4 @@ function start_process()
      * @param array $csv_data The CSV data to be processed.
      * @return void
      */
-    possehl_process($csv_data);
 }
