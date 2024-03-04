@@ -222,7 +222,7 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
             if ($sid_in_mdl == TRUE) {
 
                 //set username in user table
-                $userobj_sid->username = $row["mail"];
+                $userobj_sid->username = strtolower($row["mail"]);
 
                 //clean up firstname and lastname, unallowed characters, update data in user table
                 $userobj_sid->firstname = str_replace($removers, "", $row["givenname"]);
@@ -358,7 +358,7 @@ function update_existing_user_prepare_csv_data_for_new_user($result)
             //if no user data in moodle db, create new user
             else {
                 echo "User " . $row["mail"] . " does not exist in Moodle-database, will be created.\n";
-                $username = $row["mail"];
+                $username = strtolower($row["mail"]);
                 $firstname = str_replace($removers, "", $row["givenname"]);;
                 $lastname = str_replace($removers, "", $row["sn"]);
                 $email = $row["mail"];
@@ -488,7 +488,7 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
     global $DB;
     if ($result) {
         foreach ($result as $row) {
-            $username = $row['mail'];
+            $username = strtolower($row['mail']);
             $timestamp_now = time();
             $timestamp_udate_in_db = strtotime($row['updatedAt']);
             $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
