@@ -492,10 +492,7 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
             $timestamp_now = time();
             $timestamp_udate_in_db = strtotime($row['updatedAt']);
             $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
-            //$lastupdated_at = strtotime(date("Y-m-d H:i:s")) - strtotime($row['updatedAt']);
-            //$last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
 
-            //if ($row['penDisabled'] == 1 && $lastupdated_at >= $last_val_in_timespan) {
             if ($row['penDisabled'] == 1 && $timestamp_now - $timestamp_udate_in_db >= $timespan_in_sec) {
 
                 //calculate the difference in weeks
@@ -504,34 +501,32 @@ function delete_disabled_users_from_external_db_data($result, $timespan)
                 echo "From external DB: User " . $username . " disabled = " . $row['penDisabled'] . " and last updated " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $timestamp_udate_in_db . "\n";
 
                 try {
-                    //$userExists = $DB->get_record('user', array('username' => $username));
                     $sql = "SELECT * FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
                     $userExists = $DB->get_record_sql($sql, array($username)); #
 
                     if ($userExists) {
                         $userid = $userExists->id;
                         $usersid = $row['sid'];
-                        //delete record in table user
-                        //$DB->delete_records('user', array('username' => $username));
-                        $sqlDeleteUser = "DELETE FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
-                        $DB->execute($sqlDeleteUser, array($username));
+
+                        //delete user record with moodle function delete_user
+                        global $CFG;
+                        require_once(__DIR__ . '/../../config.php');
+                        require_once($CFG->dirroot . '/user/lib.php');
+                        delete_user($userExists);
+
 
                         //delete record in table user_info_data
-                        //$DB->delete_records('user_info_data', array('userid' => $userid));
                         $sqlDeleteUserInfoDataByUserId = "DELETE FROM {user_info_data} WHERE userid = ?";
                         $DB->execute($sqlDeleteUserInfoDataByUserId, array($userid));
 
                         //delete all entries in user_info_data with certain sid
-                        //$DB->delete_records('user_info_data', array('data' => $usersid));
                         $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
                         $DB->execute($sqlDeleteUserInfoDataByData, array($usersid));
 
                         echo "User " . $username . " deleted sucessfully.\n";
-                    } else {
-                        echo "User " . $username . " does not exist in Moodle-database.\n";
                     }
                 } catch (dml_exception $e) {
-                    echo "Fehler beim Löschen des Benutzers: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
+                    echo "Error at deleting user: " . $row['mail'] . " :" . $e->getMessage() . "<br/>";
                 }
             } else {
                 echo "User " . $username . " will not be deleted.\n";
@@ -563,65 +558,62 @@ function delete_disabled_users_from_moodle_db_data($timespan)
     try {
         $records = $DB->get_records_sql($sql);
         foreach ($records as $record) {
-            $username = strtolower($record->username);
-            $userid = $record->id;
-            $lastlogin = $record->lastlogin;
-            $suspended = $record->suspended;
-            $timestamp_now = time();
-            $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
+            $username = ($record->username);
 
-            //calc difference now - last login
-            //$lastlogin_at = strtotime(date("Y-m-d H:i:s")) - strtotime($lastlogin);
-            //$last_val_in_timespan = strtotime(date("Y-m-d H:i:s")) - strtotime($timespan . " months");
-            //calc value diff - timespan in month
-
+            //only delete real users, not system users, indicated by 10 digit username end
+            if (!preg_match('/\d{10}$/', $username)) {
+                $username = strtolower($username);
+                $userid = $record->id;
+                $lastlogin = $record->lastlogin;
+                $suspended = $record->suspended;
+                $timestamp_now = time();
+                $timespan_in_sec = $timespan * 30 * 24 * 60 * 60;
 
 
+                if ($suspended == 1 && $timestamp_now - $lastlogin >= $timespan_in_sec) {
+                    $timestamp_now = strtotime(date("Y-m-d H:i:s"));
 
-            if ($suspended == 1 && $timestamp_now - $lastlogin >= $timespan_in_sec) {
-                $timestamp_now = strtotime(date("Y-m-d H:i:s"));
+                    //calculate the difference in weeks
+                    $last_update_since =  $timestamp_now - $lastlogin;
+                    $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
+                    echo "From Moodle DB: User " . $username . " suspended = " . $record->suspended . " and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $lastlogin . "\n";
 
-                //calculate the difference in weeks
-                $last_update_since =  $timestamp_now - $lastlogin;
-                $weeks = floor($last_update_since / (60 * 60 * 24 * 7));
-                echo "From Moodle DB: User " . $username . " suspended = " . $record->suspended . " and last login " . $weeks . " weeks ago, timestamp now: " . $timestamp_now . ", timestamp last_updated: " . $lastlogin . "\n";
+                    // get sid of a user
+                    $fieldname = 'sidnumber';
+                    $sql = "SELECT id FROM {user_info_field} WHERE " . $DB->sql_compare_text('name') . " = :fieldname";
+                    $params = array('fieldname' => $fieldname);
+                    $fieldid = $DB->get_field_sql($sql, $params);
 
-                // get sid of a user
-                $fieldname = 'sidnumber';
-                $sql = "SELECT id FROM {user_info_field} WHERE " . $DB->sql_compare_text('name') . " = :fieldname";
-                $params = array('fieldname' => $fieldname);
-                $fieldid = $DB->get_field_sql($sql, $params);
+                    //get id of entry in user_info_data with certain sid;
+                    if ($fieldid !== false) {
+                        $usersid = $DB->get_field('user_info_data', 'data', array('userid' => $userid, 'fieldid' => $fieldid));
+                    }
 
-                echo "fieldid of sidnumber: " . $fieldid . "\n";
+                    //delete all entries in user_info_data with certain sid
+                    if ($usersid !== false) {
+                        $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
+                        echo "delete all sid entries in user_info_data with certain sid.\n";
+                        $DB->execute($sqlDeleteUserInfoDataByData, array($usersid));
+                    }
 
-                if ($fieldid !== false) {
-                    //echo "fieldid = " . $fieldid . "; userid = " .$userid.  "\n";
-                    $usersid = $DB->get_field('user_info_data', 'data', array('userid' => $userid, 'fieldid' => $fieldid));
-                    //echo "sid of user " . $username . " is " . $usersid . "\n";
-                } else {
-                    echo "fieldid of sidnumber not found.\n";
+                    //delete all records in table user_info_data of this user
+                    $sqlDeleteUserInfoDataByUserId = "DELETE FROM {user_info_data} WHERE userid = ?";
+                    $DB->execute($sqlDeleteUserInfoDataByUserId, array($userid));
+
+                    //delete user record with moodle function delete_user
+                    global $CFG;
+                    require_once(__DIR__ . '/../../config.php');
+                    require_once($CFG->dirroot . '/user/lib.php');
+
+                    //only delete real users, not system users
+                    if (!preg_match('/\d{10}$/', $username)) {
+                        global $CFG;
+                        require_once(__DIR__ . '/../../config.php');
+                        require_once($CFG->dirroot . '/user/lib.php');
+                        delete_user($record);
+                        echo "User " . $username . " deleted sucessfully.\n";
+                    }
                 }
-
-                //delete all entries in user_info_data with certain sid
-                if ($usersid !== false) {
-                    //echo "(moodle delete process) sid of user " . $username . " is " . $usersid . "\n";
-                    $sqlDeleteUserInfoDataByData = "DELETE FROM {user_info_data} WHERE " . $DB->sql_compare_text('data') . " = ?";
-                    echo "delete all sid entries in user_info_data with certain sid.\n";
-                    $DB->execute($sqlDeleteUserInfoDataByData, array($usersid));
-                } else {
-                    echo "sid if user not found.\n";
-                }
-
-                //delete all records in table user_info_data of this user
-                $sqlDeleteUserInfoDataByUserId = "DELETE FROM {user_info_data} WHERE userid = ?";
-                $DB->execute($sqlDeleteUserInfoDataByUserId, array($userid));
-
-                //delete record in table user
-                $sqlDeleteUser = "DELETE FROM {user} WHERE " . $DB->sql_compare_text('username') . " = ?";
-                $DB->execute($sqlDeleteUser, array($username));
-
-
-                echo "User " . $username . " deleted sucessfully.\n";
             } else {
                 echo "User " . $username . " will not be deleted.\n";
             }
