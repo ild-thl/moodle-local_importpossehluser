@@ -554,7 +554,7 @@ function delete_disabled_users_from_moodle_db_data($timespan)
     global $DB;
 
     //sql call to get all moodle users from moodle table mdl_user with the suspended flag set to 1 and lastlogin older than timespan in month
-    $sql = "SELECT * FROM {user} WHERE suspended = 1 AND lastlogin <= DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
+    $sql = "SELECT * FROM {user} WHERE suspended = 1 AND lastlogin < DATE_SUB(NOW(), INTERVAL " . $timespan . " MONTH);";
     try {
         $records = $DB->get_records_sql($sql);
         foreach ($records as $record) {
